@@ -115,14 +115,14 @@ Open `index.html` in a modern browser (recommended: Chrome, Firefox, Edge)
 ## 📚 Documentation
 
 ### Complete Documentation
-- **[📖 Complete Documentation](documentation/GAME_ENGINE_COMPLETE.md)** - Full engine guide (Portuguese)
+- **[📖 Complete Documentation](docs/GAME_ENGINE_COMPLETE.md)** - Full engine guide (Portuguese)
 
 ### Specific Guides
-- **[🎯 User Manual](documentation/MANUAL_DE_USO.md)** - How to use the editor (Portuguese)
-- **[✨ Particle System](documentation/PARTICLE_SYSTEM.md)** - Particle guide (Portuguese)
-- **[💡 Lighting System](documentation/tecnica/LIGHTING_SYSTEM.md)** - 2D Lighting (Portuguese)
-- **[📜 Scripting](documentation/04_scripting.md)** - Creating scripts (Portuguese)
-- **[🎬 Animations](documentation/03_animacoes.md)** - Animation system (Portuguese)
+- **[🎯 User Manual](docs/MANUAL_DE_USO.md)** - How to use the editor (Portuguese)
+- **[✨ Particle System](docs/PARTICLE_SYSTEM.md)** - Particle guide (Portuguese)
+- **[💡 Lighting System](docs/tecnica/LIGHTING_SYSTEM.md)** - 2D Lighting (Portuguese)
+- **[📜 Scripting](docs/04_scripting.md)** - Creating scripts (Portuguese)
+- **[🎬 Animations](docs/03_animacoes.md)** - Animation system (Portuguese)
 
 > 📝 **Note**: Documentation is currently available in Portuguese. English translation coming soon!
 
