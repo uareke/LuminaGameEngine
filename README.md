@@ -432,7 +432,7 @@ Inspirations:
 
 **Start now** by opening `index.html` and creating your first game!
 
-![Lumina Engine](https://via.placeholder.com/800x400/2a2a40/c9a0ff?text=Lumina+Engine)
+  <img src="assets/logo/lumina-logo.png" alt="Lumina Engine Logo" width="700">
 
 > _"Illuminate your creativity, one game at a time"_ ✨
 
