@@ -1,0 +1,366 @@
+/**
+ * Lumina Engine - Brand Colors CSS Variables
+ * Version: 1.0
+ * 
+ * Use these CSS variables throughout the application
+ * for consistent branding
+ */
+
+:root {
+    /* === PRIMARY COLORS === */
+
+    /* Lumina Purple - Main brand color */
+    --lumina-purple: #c9a0ff;
+    --lumina-purple-rgb: 201, 160, 255;
+    --lumina-purple-light: #e0c9ff;
+    --lumina-purple-dark: #a070df;
+
+    /* Deep Violet - Dark backgrounds */
+    --lumina-violet: #2a1a40;
+    --lumina-violet-rgb: 42, 26, 64;
+    --lumina-violet-light: #3a2a50;
+    --lumina-violet-dark: #1a0a30;
+
+    /* Bright Gold - Accent */
+    --lumina-gold: #ffd700;
+    --lumina-gold-rgb: 255, 215, 0;
+    --lumina-gold-light: #ffe74c;
+    --lumina-gold-dark: #f0b700;
+
+    /* === NEUTRAL COLORS === */
+
+    --lumina-white: #ffffff;
+    --lumina-gray-light: #b8b8b8;
+    --lumina-gray: #888888;
+    --lumina-gray-dark: #444444;
+    --lumina-black: #0a0a15;
+
+    /* === STATE COLORS === */
+
+    --lumina-success: #27ae60;
+    --lumina-error: #e74c3c;
+    --lumina-warning: #f39c12;
+    --lumina-info: #4ecdc4;
+
+    /* === GRADIENTS === */
+
+    /* Purple to Gold - Main gradient */
+    --gradient-primary: linear-gradient(135deg, #c9a0ff 0%, #ffd700 100%);
+
+    /* Dark to Purple - Subtle background */
+    --gradient-background: linear-gradient(180deg, #2a1a40 0%, #4a3a60 100%);
+
+    /* Radial Glow */
+    --gradient-glow: radial-gradient(circle, #ffd700 0%, #c9a0ff 50%, #2a1a40 100%);
+
+    /* Dark Background Gradient */
+    --gradient-dark: linear-gradient(180deg, #0a0a15 0%, #1a1a2e 100%);
+
+    /* === SHADOWS === */
+
+    --shadow-sm: 0 2px 4px rgba(201, 160, 255, 0.1);
+    --shadow-md: 0 4px 8px rgba(201, 160, 255, 0.15);
+    --shadow-lg: 0 8px 16px rgba(201, 160, 255, 0.2);
+    --shadow-xl: 0 12px 24px rgba(201, 160, 255, 0.25);
+
+    /* Glow shadows */
+    --glow-purple: 0 0 20px rgba(201, 160, 255, 0.5);
+    --glow-gold: 0 0 20px rgba(255, 215, 0, 0.5);
+
+    /* === BORDERS === */
+
+    --border-purple: 1px solid var(--lumina-purple);
+    --border-purple-soft: 1px solid rgba(201, 160, 255, 0.3);
+    --border-dark: 1px solid var(--lumina-gray-dark);
+
+    /* === SPACING === */
+
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    --spacing-2xl: 48px;
+
+    /* === BORDER RADIUS === */
+
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-full: 9999px;
+
+    /* === TYPOGRAPHY === */
+
+    --font-family-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-family-code: 'JetBrains Mono', 'Consolas', monospace;
+
+    --font-size-xs: 0.75rem;
+    /* 12px */
+    --font-size-sm: 0.875rem;
+    /* 14px */
+    --font-size-base: 1rem;
+    /* 16px */
+    --font-size-lg: 1.125rem;
+    /* 18px */
+    --font-size-xl: 1.25rem;
+    /* 20px */
+    --font-size-2xl: 1.5rem;
+    /* 24px */
+    --font-size-3xl: 1.875rem;
+    /* 30px */
+    --font-size-4xl: 2.25rem;
+    /* 36px */
+
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+
+    --line-height-tight: 1.25;
+    --line-height-normal: 1.5;
+    --line-height-relaxed: 1.75;
+
+    /* === TRANSITIONS === */
+
+    --transition-fast: 150ms ease;
+    --transition-base: 250ms ease;
+    --transition-slow: 350ms ease;
+
+    /* === Z-INDEX === */
+
+    --z-base: 1;
+    --z-dropdown: 1000;
+    --z-modal: 2000;
+    --z-tooltip: 3000;
+    --z-top: 9999;
+}
+
+/* === UTILITY CLASSES === */
+
+/* Backgrounds */
+.bg-lumina-purple {
+    background-color: var(--lumina-purple);
+}
+
+.bg-lumina-violet {
+    background-color: var(--lumina-violet);
+}
+
+.bg-lumina-gold {
+    background-color: var(--lumina-gold);
+}
+
+.bg-lumina-black {
+    background-color: var(--lumina-black);
+}
+
+.bg-gradient-primary {
+    background: var(--gradient-primary);
+}
+
+.bg-gradient-background {
+    background: var(--gradient-background);
+}
+
+.bg-gradient-glow {
+    background: var(--gradient-glow);
+}
+
+/* Text Colors */
+.text-lumina-purple {
+    color: var(--lumina-purple);
+}
+
+.text-lumina-gold {
+    color: var(--lumina-gold);
+}
+
+.text-lumina-white {
+    color: var(--lumina-white);
+}
+
+.text-lumina-gray {
+    color: var(--lumina-gray);
+}
+
+/* Borders */
+.border-lumina-purple {
+    border: var(--border-purple);
+}
+
+.border-lumina-purple-soft {
+    border: var(--border-purple-soft);
+}
+
+/* Shadows */
+.shadow-glow-purple {
+    box-shadow: var(--glow-purple);
+}
+
+.shadow-glow-gold {
+    box-shadow: var(--glow-gold);
+}
+
+/* === COMPONENT STYLES === */
+
+/* Lumina Button (Primary CTA) */
+.lumina-btn-primary {
+    background: var(--gradient-primary);
+    color: var(--lumina-violet);
+    font-weight: var(--font-weight-bold);
+    padding: var(--spacing-md) var(--spacing-xl);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    box-shadow: var(--shadow-lg);
+}
+
+.lumina-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+}
+
+.lumina-btn-primary:active {
+    transform: translateY(0);
+}
+
+/* Lumina Card */
+.lumina-card {
+    background: var(--lumina-violet);
+    border: var(--border-purple-soft);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-base);
+}
+
+.lumina-card:hover {
+    border-color: var(--lumina-purple);
+    box-shadow: var(--glow-purple);
+}
+
+/* Lumina Section Header */
+.lumina-section-header {
+    color: var(--lumina-purple);
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-2xl);
+    margin-bottom: var(--spacing-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.lumina-section-header::before {
+    content: '✨';
+    font-size: var(--font-size-3xl);
+}
+
+/* Lumina Badge */
+.lumina-badge {
+    display: inline-block;
+    background: var(--gradient-primary);
+    color: var(--lumina-violet);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-full);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Lumina Input */
+.lumina-input {
+    background: var(--lumina-violet);
+    border: var(--border-purple-soft);
+    color: var(--lumina-white);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-family: var(--font-family-primary);
+    font-size: var(--font-size-base);
+    transition: all var(--transition-fast);
+}
+
+.lumina-input:focus {
+    outline: none;
+    border-color: var(--lumina-purple);
+    box-shadow: 0 0 0 3px rgba(201, 160, 255, 0.1);
+}
+
+/* Lumina Panel */
+.lumina-panel {
+    background: var(--gradient-background);
+    border: var(--border-dark);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+}
+
+/* Lumina Code Block */
+.lumina-code {
+    background: var(--lumina-black);
+    border: var(--border-purple-soft);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    font-family: var(--font-family-code);
+    font-size: var(--font-size-sm);
+    color: var(--lumina-purple);
+    overflow-x: auto;
+}
+
+/* === ANIMATIONS === */
+
+@keyframes lumina-glow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 10px rgba(201, 160, 255, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 0 20px rgba(201, 160, 255, 0.6);
+    }
+}
+
+.lumina-glow-animation {
+    animation: lumina-glow 2s ease-in-out infinite;
+}
+
+@keyframes lumina-sparkle {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.5;
+        transform: scale(1.1);
+    }
+}
+
+.lumina-sparkle-animation {
+    animation: lumina-sparkle 1.5s ease-in-out infinite;
+}
+
+/* === DARK MODE SUPPORT === */
+
+@media (prefers-color-scheme: light) {
+    /* Lumina is designed for dark mode, but you can add light mode overrides here if needed */
+}
+
+/* === PRINT STYLES === */
+
+@media print {
+    :root {
+        --lumina-purple: #8860d0;
+        --lumina-gold: #d4a500;
+    }
+
+    .bg-gradient-primary,
+    .bg-gradient-background {
+        background: white !important;
+        color: black !important;
+    }
+}

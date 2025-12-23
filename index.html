@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Game Engine - Editor Visual (v2)</title>
+    <!-- MUDANÇA CRÍTICA: ?v=2 novo cache bust -->
+    <link rel="stylesheet" href="css/editor.css?v=2">
+</head>
+
+<body>
+    <div class="editor-container">
+        <!-- Toolbar Superior -->
+        <div class="toolbar">
+            <div class="toolbar-logo">
+                <span>🎮</span>
+                <span>Game Engine Editor</span>
+            </div>
+
+            <!-- Grupo: Ferramentas de Criação -->
+            <div class="toolbar-group">
+                <!-- CORREÇÃO: Usando DIV em vez de BUTTON para permitir dropdown dentro (HTML Válido) -->
+                <div class="btn-tool" id="btn-criar" data-action="criar" role="button" tabindex="0">
+                    <span>+ Criar</span>
+                    <div class="dropdown-criar" id="dropdown-criar">
+                        <button data-tipo="player">👤 Player</button>
+                        <button data-tipo="npc">🤖 NPC</button>
+                        <button data-tipo="objeto">📦 Objeto</button>
+                        <button data-tipo="menu">📋 Menu UI</button>
+                    </div>
+                </div>
+                <button class="btn-tool" data-tool="selecionar" title="Selecionar (V)">🔍</button>
+                <button class="btn-tool" data-tool="mover" title="Mover (G)">✋</button>
+                <button class="btn-tool" id="btn-tile-palette" title="Paleta de Tiles (Construir)">🔨</button>
+                <button class="btn-tool" id="btn-particle-editor" title="Editor de Partículas">✨</button>
+                <button class="btn-tool" id="btn-lighting-editor" title="Editor de Iluminação">💡</button>
+                <button class="btn-tool" id="btn-toggle-gizmos" title="Mostrar/Ocultar Gizmos (Colliders)"
+                    style="border-color: #444; color: #666; opacity: 0.7;">
+                    👁️
+                </button>
+            </div>
+
+            <!-- Grupo: Controles de Execução -->
+            <div class="toolbar-group">
+
+                <button class="btn-play" id="btn-play" title="Executar (Space)">▶ Play</button>
+                <button class="btn-pause hidden" id="btn-pause" title="Pausar">⏸ Pause</button>
+                <button class="btn-stop hidden" id="btn-stop" title="Parar">◼ Stop</button>
+            </div>
+
+            <!-- Grupo: Ações de Projeto -->
+            <div class="toolbar-group">
+                <button class="btn-new" id="btn-new" title="Novo Projeto">📄 Novo</button>
+                <button class="btn-save" id="btn-save" title="Salvar (Ctrl+S)">💾 Salvar</button>
+                <button class="btn-load" id="btn-load" title="Carregar">📂 Carregar</button>
+                <input type="file" id="input-load-project" style="display:none" accept=".json">
+                <button class="btn-export" id="btn-export" title="Exportar">📤 Exportar</button>
+                <button class="btn-scene-settings" id="btn-scene-settings"
+                    title="Configurações da Cena (Cor de Fundo)">🎨 Cena</button>
+                <button class="btn-settings" id="btn-settings" title="Configurações">⚙️</button>
+            </div>
+        </div>
+
+        <!-- Modal de Configurações -->
+        <div id="modal-settings" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>⚙️ Configurações do Editor</h3>
+                    <button class="btn-close-modal" id="btn-close-settings">✖</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Tamanho da Grid (px)</label>
+                        <input type="number" id="conf-grid-size" value="50" min="8" max="128" step="8">
+                    </div>
+                    <div class="form-group-checkbox">
+                        <input type="checkbox" id="conf-snap" checked>
+                        <label for="conf-snap">Snap to Grid (Imã)</label>
+                    </div>
+
+                    <div class="form-group-checkbox">
+                        <input type="checkbox" id="conf-show-grid" checked>
+                        <label for="conf-show-grid">Mostrar Grid</label>
+                    </div>
+
+                    <div class="form-group-checkbox">
+                        <input type="checkbox" id="conf-show-gizmos" checked>
+                        <label for="conf-show-gizmos">Mostrar Gizmos (Colliders)</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="btn-apply-settings">Aplicar</button>
+                </div>
+            </div>
+        </div>
+
+
+
+        <!-- Workspace Principal -->
+        <div class="workspace">
+            <!-- Barra Lateral Esquerda (Hierarquia + Assets) -->
+            <div class="sidebar-left"
+                style="display: flex; flex-direction: column; width: 250px; background: #2a2a40; border-right: 1px solid #444;">
+
+                <!-- Painel de Hierarquia (Topo) -->
+                <div class="painel-hierarquia"
+                    style="flex: 1; display: flex; flex-direction: column; min-height: 200px; border-bottom: 2px solid #555;">
+                    <div class="painel-header">
+                        <h3>📂 Hierarquia</h3>
+                        <button class="btn-collapse">▼</button>
+                    </div>
+                    <div class="hierarquia-tree" id="hierarquia-tree" style="flex: 1; overflow-y: auto; padding: 5px;">
+                        <!-- Itens serão adicionados dinamicamente -->
+                        <div class="tree-item" style="opacity: 0.5; cursor: default;">
+                            <span class="tree-icon">📄</span>
+                            <span class="tree-label">Cena vazia - Crie uma entidade</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Painel de Assets (Fundo) -->
+                <div class="painel-assets"
+                    style="flex: 1; display: flex; flex-direction: column; background: #222233; min-height: 200px; max-height: 50vh;">
+                    <!-- Conteúdo gerado via JS -->
+                    <div id="painel-assets-content" style="flex: 1; overflow-y: auto; overflow-x: hidden;"></div>
+                </div>
+
+            </div>
+
+            <!-- Resizer Esquerdo -->
+            <div class="resizer-vertical" id="resizer-left"></div>
+
+            <!-- Área do Canvas (Centro) -->
+            <div class="canvas-area">
+                <div class="canvas-container">
+                    <canvas id="game-canvas" tabindex="0"></canvas>
+                    <div class="info-overlay">
+                        <div class="info-item">
+                            <span class="info-label">FPS:</span>
+                            <span class="info-value" id="fps-counter">60</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Modo:</span>
+                            <span class="info-value" id="modo-atual">Edição</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Entidades:</span>
+                            <span class="info-value" id="entidades-count">0</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Zoom:</span>
+                            <span class="info-value" id="zoom-level">100%</span>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resizer Direito -->
+            <div class="resizer-vertical" id="resizer-right"></div>
+
+            <!-- Painel de Propriedades (Direita) -->
+            <div class="painel-propriedades">
+                <div class="painel-header">
+                    <h3>⚙️ Propriedades</h3>
+                    <button class="btn-collapse">▼</button>
+                </div>
+                <div class="propriedades-content" id="propriedades-content">
+                    <div class="prop-empty">
+                        <div class="prop-empty-icon">🎯</div>
+                        <p>Selecione uma entidade para editar suas propriedades</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resizer Console -->
+        <div class="resizer-horizontal" id="resizer-console"></div>
+
+        <!-- Console (Rodapé) - COLAPSADO POR PADRÃO -->
+        <div class="painel-console collapsed" id="painel-console">
+            <div class="painel-header">
+                <h3>📟 Console</h3>
+                <button class="btn-collapse" id="btn-toggle-console">▼</button>
+            </div>
+            <div class="console-content" id="console-content">
+                <div class="console-log info">
+                    <span class="console-timestamp">[00:00:00]</span>
+                    <span>🎮 Editor Visual inicializado com sucesso!</span>
+                </div>
+                <div class="console-log info">
+                    <span class="console-timestamp">[00:00:00]</span>
+                    <span>💡 Clique em "+ Criar" para adicionar elementos ao jogo</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal do Editor de Sprites -->
+    <!-- MODO 1: Editor de Sprites (Físico: Imagem + Grid) -->
+    <div id="modal-sprite-editor" class="modal hidden">
+        <div class="modal-content"
+            style="max-width: 900px; width: 90%; height: 80vh; display: flex; flex-direction: row; padding: 0;">
+            <!-- Esquerda: Imagem Global -->
+            <div
+                style="flex: 2; background: #111; padding: 20px; overflow: auto; display: flex; justify-content: center; align-items: center; position: relative;">
+                <div id="upload-area"
+                    style="border: 2px dashed #444; padding: 40px; text-align: center; cursor: pointer;">
+                    <span style="font-size: 40px;">📁</span>
+                    <p style="color: #888;">Clique para carregar Sprite Sheet (Principal)</p>
+                    <input type="file" id="input-sprite-file" accept="image/*" hidden>
+                </div>
+                <div id="canvas-sprite-container" class="hidden" style="position: relative;">
+                    <canvas id="canvas-sprite-editor"></canvas>
+                </div>
+            </div>
+
+            <!-- Direita: Configuração Grid -->
+            <div
+                style="flex: 1; background: #222; padding: 20px; display: flex; flex-direction: column; overflow-y: auto; border-left: 1px solid #444;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0; color: #fff;">✏️ Editor de Sprite</h3>
+                    <button id="btn-close-sprite"
+                        style="background: none; border: none; color: #fff; font-size: 20px; cursor: pointer;">✖</button>
+                </div>
+
+                <div class="secao-editor">
+                    <h4 style="color: #4ecdc4; margin-bottom: 10px;">Grid (Fatiar)</h4>
+                    <div style="display: flex; gap: 10px;">
+                        <div>
+                            <label style="display: block; font-size: 11px; color: #888;">Largura (px)</label>
+                            <input type="number" id="sprite-frame-width" value="32"
+                                style="width: 100%; background: #333; border: 1px solid #444; color: white; padding: 5px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 11px; color: #888;">Altura (px)</label>
+                            <input type="number" id="sprite-frame-height" value="32"
+                                style="width: 100%; background: #333; border: 1px solid #444; color: white; padding: 5px;">
+                        </div>
+                    </div>
+                    <div id="sprite-info-display"
+                        style="font-size: 12px; color: #aaa; margin-top: 10px; padding: 5px; background: rgba(0,0,0,0.2); border-radius: 4px;">
+                    </div>
+                </div>
+
+                <div style="margin-top: auto;">
+                    <button id="btn-save-sprite" class="btn-full"
+                        style="background: #e0e0e0; color: #333; font-weight: bold; padding: 10px; border: none; cursor: pointer; width: 100%;">💾
+                        Salvar Sprite</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODO 2: Editor de Animação (Lógico: Frames + Preview) -->
+    <div id="modal-animation-editor" class="modal hidden">
+        <div class="modal-content"
+            style="max-width: 950px; width: 95%; height: 85vh; display: flex; flex-direction: row; padding: 0;">
+            <!-- Esquerda: Lista de Animações + Seleção de Frames -->
+            <div
+                style="flex: 1; background: #1a1a1a; padding: 10px; overflow: auto; display: flex; flex-direction: column; gap: 10px;">
+
+                <!-- Lista de Animações AQUI -->
+                <div style="background: #222; padding: 10px; border-radius: 4px; border: 1px solid #444;">
+                    <h4 style="margin: 0 0 10px 0; color: #4ecdc4;">🎬 Animações</h4>
+                    <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+                        <input type="text" id="inp-anim-name" placeholder="Nova (ex: attack)..."
+                            style="flex:1; background:#333; border:1px solid #444; color:white; padding:5px;">
+                        <button id="btn-anim-create" style="background:#4ecdc4; border:none; width:30px;">+</button>
+                    </div>
+                    <div class="list-container"
+                        style="height: 150px; overflow-y: auto; background: #151520; border: 1px solid #333;">
+                        <div id="list-anims" style="display: flex; flex-direction: column;"></div>
+                    </div>
+                </div>
+
+                <!-- Seleção de Frames -->
+                <div style="margin-bottom: 5px; color: #aaa; font-size: 11px; text-align: center;">Clique nos quadros
+                    para adicionar à timeline da animação</div>
+                <div
+                    style="flex: 1; overflow: auto; display: flex; justify-content: center; align-items: center; border: 1px solid #333; background: #222;">
+                    <canvas id="canvas-anim-editor"></canvas>
+                </div>
+
+                <!-- Informações da Imagem -->
+                <div id="image-info-panel"
+                    style="padding: 10px; background: #1a1a2e; border: 1px solid #444; border-radius: 4px; margin-top: 10px;">
+                    <div style="font-size: 10px; color: #888; margin-bottom: 5px;">📄 Informações da Imagem</div>
+                    <div style="font-size: 11px; color: #ccc; display: flex; flex-direction: column; gap: 3px;">
+                        <div><span style="color: #4ecdc4;">Nome:</span> <span id="img-info-name">-</span></div>
+                        <div><span style="color: #4ecdc4;">Extensão:</span> <span id="img-info-ext">-</span></div>
+                        <div><span style="color: #4ecdc4;">Dimensões:</span> <span id="img-info-size">-</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Direita: Propriedades + Preview -->
+            <div
+                style="flex: 1; min-width: 300px; background: #222; padding: 15px; display: flex; flex-direction: column; border-left: 1px solid #444; overflow-y: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0; color: #fff;">⚙️ Propriedades</h3>
+                    <button id="btn-close-anim"
+                        style="background: none; border: none; color: #fff; font-size: 20px; cursor: pointer;">✖</button>
+                </div>
+
+                <!-- Propriedades da Selecionada -->
+                <div style="border-top: 1px solid #444; padding-top: 10px;">
+                    <h4 style="color: #4ecdc4; margin: 0 0 10px 0;">Editando: <span id="lbl-anim-current"
+                            style="color: white;">-</span></h4>
+
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                        <div>
+                            <label style="font-size: 10px; color:#aaa;">FPS</label>
+                            <input type="number" id="inp-anim-speed" value="10"
+                                style="width: 50px; background:#333; border:1px solid #444; color:white;">
+                        </div>
+                        <div style="display: flex; align-items: center;">
+                            <input type="checkbox" id="chk-anim-loop" checked>
+                            <label for="chk-anim-loop"
+                                style="font-size: 11px; margin-left: 5px; color:#ccc;">Loop</label>
+                        </div>
+                    </div>
+
+                    <!-- Dimensões do Frame (Opcional por Animação) -->
+                    <div
+                        style="margin-bottom: 10px; padding: 8px; background: #1a1a2e; border-radius: 4px; border: 1px solid #333;">
+                        <div style="font-size: 10px; color: #888; margin-bottom: 5px;">📐 Tamanho do Frame (Opcional)
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <div>
+                                <label style="font-size: 9px; color:#aaa;">Largura</label>
+                                <input type="number" id="inp-anim-frame-w" placeholder="Auto"
+                                    style="width: 55px; background:#222; border:1px solid #444; color:#4ecdc4; text-align:center; font-size: 11px; padding: 3px;">
+                            </div>
+                            <div>
+                                <label style="font-size: 9px; color:#aaa;">Altura</label>
+                                <input type="number" id="inp-anim-frame-h" placeholder="Auto"
+                                    style="width: 55px; background:#222; border:1px solid #444; color:#4ecdc4; text-align:center; font-size: 11px; padding: 3px;">
+                            </div>
+                        </div>
+                        <div style="font-size: 8px; color: #555; margin-top: 3px;">Se vazio, usa dimensão global do
+                            asset</div>
+                    </div>
+
+                    <!-- Offset da Animação (Opcional por Animação) -->
+                    <div
+                        style="margin-bottom: 10px; padding: 8px; background: #1a1a2e; border-radius: 4px; border: 1px solid #333;">
+                        <div style="font-size: 10px; color: #888; margin-bottom: 5px;">📍 Offset (Opcional)
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <div>
+                                <label style="font-size: 9px; color:#aaa;">Offset X</label>
+                                <input type="number" id="inp-anim-offset-x" placeholder="0"
+                                    style="width: 55px; background:#222; border:1px solid #444; color:#ff6b6b; text-align:center; font-size: 11px; padding: 3px;">
+                            </div>
+                            <div>
+                                <label style="font-size: 9px; color:#aaa;">Offset Y</label>
+                                <input type="number" id="inp-anim-offset-y" placeholder="0"
+                                    style="width: 55px; background:#222; border:1px solid #444; color:#ff6b6b; text-align:center; font-size: 11px; padding: 3px;">
+                            </div>
+                        </div>
+                        <div style="font-size: 8px; color: #555; margin-top: 3px;">Ajuste fino da posição desta animação
+                        </div>
+                    </div>
+
+                    <!-- Tamanho de Renderização (Opcional por Animação) -->
+                    <div
+                        style="margin-bottom: 10px; padding: 8px; background: #1a1a2e; border-radius: 4px; border: 1px solid #333;">
+                        <div style="font-size: 10px; color: #888; margin-bottom: 5px;">📏 Tamanho (Opcional)
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <div>
+                                <label style="font-size: 9px; color:#aaa;">Largura</label>
+                                <input type="number" id="inp-anim-draw-w" placeholder="Auto"
+                                    style="width: 55px; background:#222; border:1px solid #444; color:#95e1d3; text-align:center; font-size: 11px; padding: 3px;">
+                            </div>
+                            <div>
+                                <label style="font-size: 9px; color:#aaa;">Altura</label>
+                                <input type="number" id="inp-anim-draw-h" placeholder="Auto"
+                                    style="width: 55px; background:#222; border:1px solid #444; color:#95e1d3; text-align:center; font-size: 11px; padding: 3px;">
+                            </div>
+                        </div>
+                        <div style="font-size: 8px; color: #555; margin-top: 3px;">Tamanho final ao desenhar (usa da
+                            entidade se vazio)</div>
+                    </div>
+
+                    <!-- Fonte da Imagem -->
+                    <div style="margin-bottom: 15px; padding: 10px; background: #191919; border-radius: 4px;">
+                        <div style="font-size: 11px; color: #888; margin-bottom: 5px;">Imagem Base (Source)</div>
+                        <div style="display: flex; gap: 5px;">
+                            <select id="sel-anim-source"
+                                style="flex: 1; background: #333; color: white; border: 1px solid #444; font-size: 11px; padding: 4px;">
+                                <option value="">Sprite Sheet Padrão</option>
+                                <option value="upload">📂 [Carregar Novo...]</option>
+                            </select>
+                        </div>
+                        <input type="file" id="inp-upload-anim-img" accept="image/*" hidden>
+                        <div style="font-size: 9px; color: #666; margin-top: 3px;">Cada animação pode usar uma imagem
+                            diferente.</div>
+                    </div>
+
+                    <!-- Preview -->
+                    <div
+                        style="background: black; border: 1px solid #444; height: 120px; display: flex; justify-content: center; align-items: center;">
+                        <canvas id="canvas-final-preview" width="150" height="150"
+                            style="object-fit: contain; max-width: 100%; max-height: 100%;"></canvas>
+                    </div>
+                </div>
+
+                <div style="margin-top: auto;">
+                    <button id="btn-save-anim" class="btn-full"
+                        style="background: #4ecdc4; color: #1a1a2e; font-weight: bold; padding: 10px; border: none; cursor: pointer; width: 100%;">💾
+                        Salvar Animações</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Janela Flutuante: Paleta de Tiles -->
+    <div id="tile-palette-window" class="floating-window hidden"
+        style="position: absolute; top: 100px; right: 300px; width: 320px; height: 400px; background: #222; border: 1px solid #4ecdc4; display: flex; flex-direction: column; z-index: 2000; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+        <div class="window-header"
+            style="background: #16213e; padding: 5px 10px; cursor: move; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #4ecdc4;">
+            <h4 style="margin: 0; color: #4ecdc4; font-size: 12px;">🧱 Paleta de Tiles</h4>
+            <button id="btn-close-palette"
+                style="background: none; border: none; color: #aaa; cursor: pointer;">✖</button>
+        </div>
+
+        <div class="window-controls" style="padding: 10px; background: #1a1a2e; border-bottom: 1px solid #333;">
+            <select id="select-tileset-asset"
+                style="width: 100%; margin-bottom: 5px; background: #333; color: white; border: 1px solid #555; font-size: 11px;">
+                <option value="">-- Selecione um Asset --</option>
+            </select>
+            <div style="display: flex; gap: 5px; align-items: center;">
+                <label style="font-size: 10px; color: #aaa;">Grid:</label>
+                <input type="number" id="palette-grid-w" value="32"
+                    style="width: 40px; background: #111; border: 1px solid #444; color: white; font-size: 10px;">
+                <span style="font-size: 10px; color: #aaa;">x</span>
+                <input type="number" id="palette-grid-h" value="32"
+                    style="width: 40px; background: #111; border: 1px solid #444; color: white; font-size: 10px;">
+            </div>
+            <div style="display: flex; gap: 5px; margin-top: 5px; border-top: 1px solid #333; padding-top: 5px;">
+                <button id="btn-tool-pencil" title="Lápis (Pintar)"
+                    style="flex: 1; border: 1px solid #444; background: #333; color: white; cursor: pointer; padding: 2px;">✏️</button>
+                <button id="btn-tool-eraser" title="Borracha (Apagar)"
+                    style="flex: 1; border: 1px solid #444; background: #333; color: white; cursor: pointer; padding: 2px;">🧽</button>
+                <button id="btn-tool-solid" title="Solidificador (Colisão)"
+                    style="flex: 1; border: 1px solid #444; background: #333; color: white; cursor: pointer; padding: 2px;">🧱</button>
+            </div>
+        </div>
+
+        <div class="window-content" style="flex: 1; overflow: auto; background: #111; position: relative;">
+            <canvas id="canvas-tile-palette"></canvas>
+        </div>
+
+        <div class="window-footer"
+            style="padding: 5px; background: #16213e; font-size: 10px; color: #aaa; border-top: 1px solid #333;">
+            Tile Selecionado: <span id="selected-tile-info">Nenhum</span>
+        </div>
+    </div>
+
+    <!-- Modal de Inicialização (Startup) -->
+    <div id="modal-startup" class="modal" style="display: flex;">
+        <div class="modal-content"
+            style="max-width: 500px; text-align: center; border: 2px solid #c9a0ff; box-shadow: 0 0 50px rgba(201,160,255,0.3); background: linear-gradient(180deg, #1a1a2e 0%, #2a1a40 100%);">
+            <div style="padding: 40px;">
+                <!-- Logo -->
+                <img src="assets/logo/lumina-logo.png" alt="Lumina Engine"
+                    style="max-width: 100%; width: 400px; margin-bottom: 20px; filter: drop-shadow(0 0 20px rgba(201,160,255,0.5));">
+
+                <!-- Tagline -->
+                <p style="color: #ffd700; margin-bottom: 10px; font-size: 16px; font-weight: 500;">
+                    Illuminate Your Game Development
+                </p>
+
+                <p style="color: #b8b8b8; margin-bottom: 30px; line-height: 1.5; font-size: 14px;">
+                    Bem-vindo! ✨<br>Selecione uma opção para começar:
+                </p>
+
+                <button id="btn-startup-new" class="btn-full"
+                    style="display: block; width: 100%; margin-bottom: 15px; padding: 15px; font-size: 16px; background: linear-gradient(135deg, #c9a0ff, #ffd700); color: #1a1a2e; font-weight: bold; cursor: pointer; border: none; border-radius: 8px; transition: all 0.3s; box-shadow: 0 4px 15px rgba(201,160,255,0.3);">
+                    ✨ Novo Projeto
+                </button>
+
+                <button id="btn-startup-load" class="btn-full"
+                    style="display: block; width: 100%; padding: 15px; font-size: 16px; background: transparent; color: #c9a0ff; cursor: pointer; border: 2px solid #c9a0ff; border-radius: 8px; transition: all 0.3s;">
+                    📂 Carregar Projeto
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Editor de Partículas -->
+    <div id="modal-particle-editor" class="modal hidden">
+        <div class="modal-content"
+            style="max-width: 900px; width: 95%; height: 85vh; display: flex; flex-direction: column; padding: 0;">
+            <!-- Header -->
+            <div
+                style="background: #2a1a40; padding: 15px; border-bottom: 2px solid #6a4c9c; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; color: #c9a0ff;">✨ Editor de Partículas</h3>
+                <button id="btn-close-particle-editor"
+                    style="background: transparent; border: none; color: #c9a0ff; font-size: 24px; cursor: pointer;">✕</button>
+            </div>
+
+            <!--CONTENT Flex Row -->
+            <div style="display: flex; flex: 1; overflow: hidden;">
+                <!-- Esquerda: Lista de Templates -->
+                <div
+                    style="flex: 1; background: #1a1a1a; padding: 15px; overflow-y: auto; border-right: 1px solid #444;">
+                    <h4 style="margin: 0 0 10px 0; color: #c9a0ff;">📚 Templates</h4>
+
+                    <!-- Criar Novo -->
+                    <div
+                        style="background: #222; padding: 10px; border-radius: 4px; margin-bottom: 10px; border: 1px solid #444;">
+                        <input type="text" id="particle-new-name" placeholder="Nome do template..."
+                            style="width: 100%; background: #333; border: 1px solid #444; color: white; padding: 8px; margin-bottom: 8px; border-radius: 3px;">
+                        <button id="btn-particle-create"
+                            style="width: 100%; background: #6a4c9c; color: white; border: none; padding: 8px; cursor: pointer; border-radius: 3px;">+
+                            Criar Template</button>
+                    </div>
+
+                    <!-- Lista -->
+                    <div id="particle-template-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                </div>
+
+                <!-- Direita: Editor + Preview -->
+                <div
+                    style="flex: 2; background: #222; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
+                    <!-- Nome do Template Selecionado -->
+                    <div style="background: #2a1a40; padding: 10px; border-radius: 4px; border: 1px solid #6a4c9c;">
+                        <div style="font-size: 11px; color: #888; margin-bottom: 3px;">Editando:</div>
+                        <div id="particle-editing-name" style="font-size: 14px; color: #c9a0ff; font-weight: bold;">
+                            Nenhum selecionado</div>
+                    </div>
+
+                    <!-- Preview -->
+                    <div
+                        style="background: #111; padding: 15px; border-radius: 4px; border: 1px solid #444; text-align: center;">
+                        <div style="font-size: 11px; color: #888; margin-bottom: 8px;">🎬 Preview</div>
+                        <canvas id="canvas-particle-preview" width="300" height="200"
+                            style="border: 1px solid #333; background: #000;"></canvas>
+                    </div>
+
+                    <!-- Controles (Accordion Sections) -->
+                    <div id="particle-controls">
+                        <!-- Será preenchido dinamicamente -->
+                    </div>
+
+                    <!-- Botões de Ação -->
+                    <div style="display: flex; gap: 10px;">
+                        <button id="btn-particle-save"
+                            style="flex: 1; background: #27ae60; color: white; border: none; padding: 10px; cursor: pointer; border-radius: 4px; font-weight: bold;">💾
+                            Salvar Template</button>
+                        <button id="btn-particle-delete"
+                            style="background: #c0392b; color: white; border: none; padding: 10px; cursor: pointer; border-radius: 4px;">🗑️
+                            Deletar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="main.js"></script>
+</body>
+
+</html>
+```
