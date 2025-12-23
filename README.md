@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Illuminate Your Game Development</strong><br>
-  <em>Motor de Jogo 2D completo com Editor Visual em JavaScript puro</em>
+  <em>Complete 2D Game Engine with Visual Editor in Pure JavaScript</em>
 </p>
 
 <p align="center">
@@ -16,206 +16,213 @@
   <img src="https://img.shields.io/badge/2D-Game%20Engine-purple" alt="2D Game Engine">
 </p>
 
+<p align="center">
+  <a href="README.md">English</a> •
+  <a href="README.pt-BR.md">Português (Brasil)</a>
+</p>
+
 ---
 
-## ✨ Destaques
+## ✨ Highlights
 
-- 🖼️ **Editor Visual WYSIWYG** - Crie jogos sem programar
-- 🧩 **Arquitetura ECS** - Entity-Component-System modular
-- 🎨 **Sistema de Partículas** - Com templates reutilizáveis
-- 💡 **Iluminação 2D** - Luzes dinâmicas e sombras
-- 🗺️ **Tilemap Editor** - Construa mapas visualmente
-- 🎬 **Editor de Animações** - Configure sprites e animações
-- 📜 **Sistema de Scripts** - Comportamentos customizáveis
-- 🎯 **Física 2D** - Colisões, gravidade e plataformas
+- 🖼️ **WYSIWYG Visual Editor** - Create games without coding
+- 🧩 **ECS Architecture** - Modular Entity-Component-System
+- 🎨 **Particle System** - With reusable templates
+- 💡 **2D Lighting** - Dynamic lights and shadows
+- 🗺️ **Tilemap Editor** - Build maps visually
+- 🎬 **Animation Editor** - Configure sprites and animations
+- 📜 **Script System** - Customizable behaviors
+- 🎯 **2D Physics** - Collisions, gravity, and platforms
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Clone o Repositório
+### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/lumina-engine.git
-cd lumina-engine
+git clone https://github.com/uareke/LuminaGameEngine.git
+cd LuminaGameEngine
 ```
 
-### 2. Abra o Editor
+### 2. Open the Editor
 
-Abra `index.html` em um navegador moderno (recomendado: Chrome, Firefox, Edge)
+Open `index.html` in a modern browser (recommended: Chrome, Firefox, Edge)
 
-> ⚠️ **Importante**: Use um servidor local para evitar problemas de CORS:
+> ⚠️ **Important**: Use a local server to avoid CORS issues:
 > ```bash
-> # Opção 1: Python
+> # Option 1: Python
 > python -m http.server 8000
 > 
-> # Opção 2: Node.js
+> # Option 2: Node.js
 > npx http-server
 > 
-> # Opção 3: VS Code Live Server
-> # Instale a extensão "Live Server" e clique com botão direito > "Open with Live Server"
+> # Option 3: VS Code Live Server
+> # Install "Live Server" extension and right-click > "Open with Live Server"
 > ```
 
-### 3. Crie Seu Primeiro Jogo
+### 3. Create Your First Game
 
-1. **Adicione um Asset**
-   - Clique no painel de Assets
-   - Upload de uma imagem (sprite)
-   - Configure frames e animações
+1. **Add an Asset**
+   - Click on the Assets panel
+   - Upload an image (sprite)
+   - Configure frames and animations
 
-2. **Crie uma Entidade**
-   - Clique em `+ Criar` → `Player`
-   - Selecione a entidade no canvas
+2. **Create an Entity**
+   - Click `+ Create` → `Player`
+   - Select the entity on canvas
 
-3. **Adicione Componentes**
-   - No painel de propriedades: `+ Adicionar Componente`
-   - Escolha: `Sprite Renderer`, `Box Collider`, `Script Plataforma`
+3. **Add Components**
+   - In properties panel: `+ Add Component`
+   - Choose: `Sprite Renderer`, `Box Collider`, `Platform Script`
 
-4. **Teste**
-   - Clique em `▶ Play`
-   - Use setas para mover, espaço para pular
+4. **Test**
+   - Click `▶ Play`
+   - Use arrows to move, space to jump
 
-5. **Salve**
-   - `💾 Salvar` para exportar o projeto
-
----
-
-## 📚 Documentação
-
-### Documentação Completa
-- **[📖 Documentação Completa](documentation/GAME_ENGINE_COMPLETA.md)** - Guia completo da engine
-
-### Guias Específicos
-- **[🎯 Manual de Uso](documentation/MANUAL_DE_USO.md)** - Como usar o editor
-- **[✨ Sistema de Partículas](documentation/PARTICLE_SYSTEM.md)** - Guia de partículas
-- **[💡 Sistema de Iluminação](documentation/tecnica/LIGHTING_SYSTEM.md)** - Iluminação 2D
-- **[📜 Scripting](documentation/04_scripting.md)** - Criando scripts
-- **[🎬 Animações](documentation/03_animacoes.md)** - Sistema de animações
+5. **Save**
+   - `💾 Save` to export the project
 
 ---
 
-## 🏗️ Arquitetura
+## 📚 Documentation
 
-### Estrutura do Projeto
+### Complete Documentation
+- **[📖 Complete Documentation](documentation/GAME_ENGINE_COMPLETA.md)** - Full engine guide (Portuguese)
+
+### Specific Guides
+- **[🎯 User Manual](documentation/MANUAL_DE_USO.md)** - How to use the editor (Portuguese)
+- **[✨ Particle System](documentation/PARTICLE_SYSTEM.md)** - Particle guide (Portuguese)
+- **[💡 Lighting System](documentation/tecnica/LIGHTING_SYSTEM.md)** - 2D Lighting (Portuguese)
+- **[📜 Scripting](documentation/04_scripting.md)** - Creating scripts (Portuguese)
+- **[🎬 Animations](documentation/03_animacoes.md)** - Animation system (Portuguese)
+
+> 📝 **Note**: Documentation is currently available in Portuguese. English translation coming soon!
+
+---
+
+## 🏗️ Architecture
+
+### Project Structure
 
 ```
 lumina-engine/
-├── index.html              # Editor visual
+├── index.html              # Visual editor
 ├── main.js                 # Entry point
-├── engine/                 # Core da engine
+├── engine/                 # Engine core
 │   ├── Engine.js
 │   ├── LoopJogo.js
 │   ├── Renderizador.js
 │   └── Camera.js
-├── componentes/            # Componentes ECS
+├── componentes/            # ECS Components
 │   ├── SpriteComponent.js
 │   ├── CollisionComponent.js
 │   ├── ParticleEmitterComponent.js
 │   ├── LightComponent.js
 │   └── ...
-├── editor/                 # Editor visual
+├── editor/                 # Visual editor
 │   ├── EditorPrincipal.js
 │   ├── AssetManager.js
 │   ├── EditorAnimation.js
 │   └── ...
-├── sistemas/               # Sistemas especializados
+├── sistemas/               # Specialized systems
 │   └── LightingSystem.js
-└── documentation/          # Documentação
+└── documentation/          # Documentation
 ```
 
-### Padrão ECS
+### ECS Pattern
 
 ```javascript
 // Entity (Container)
 const player = new Entidade('player');
 
-// Components (Dados + Comportamento)
+// Components (Data + Behavior)
 player.adicionarComponente('SpriteComponent', new SpriteComponent());
 player.adicionarComponente('CollisionComponent', new CollisionComponent());
-player.adicionarComponente('script_movimento', new ScriptComponent());
+player.adicionarComponente('script_movement', new ScriptComponent());
 
-// Systems (Lógica Global)
-// Processam componentes no game loop
+// Systems (Global Logic)
+// Process components in game loop
 ```
 
 ---
 
-## 🎯 Recursos
+## 🎯 Features
 
-### ✅ Implementado
+### ✅ Implemented
 
 #### Editor
-- [x] Interface WYSIWYG completa
-- [x] Hierarquia de entidades (tree view)
-- [x] Painel de propriedades dinâmico
-- [x] Asset manager com preview
-- [x] Editor de sprites (fatiar sprite sheets)
-- [x] Editor de animações
-- [x] Editor de partículas
-- [x] Editor de iluminação
+- [x] Complete WYSIWYG interface
+- [x] Entity hierarchy (tree view)
+- [x] Dynamic properties panel
+- [x] Asset manager with preview
+- [x] Sprite editor (slice sprite sheets)
+- [x] Animation editor
+- [x] Particle editor
+- [x] Lighting editor
 - [x] Tilemap painter
-- [x] Grid e snap-to-grid
-- [x] Gizmos visuais
-- [x] Console de debug
+- [x] Grid and snap-to-grid
+- [x] Visual gizmos
+- [x] Debug console
 
 #### Engine Core
-- [x] Game loop otimizado
-- [x] Sistema de renderização 2D
-- [x] Câmera com zoom e pan
-- [x] Sistema de input (teclado/mouse)
-- [x] Delta time preciso
-- [x] Serialização/Desserialização
+- [x] Optimized game loop
+- [x] 2D rendering system
+- [x] Camera with zoom and pan
+- [x] Input system (keyboard/mouse)
+- [x] Precise delta time
+- [x] Serialization/Deserialization
 
-#### Componentes
-- [x] **SpriteComponent** - Renderização de sprites
-- [x] **CollisionComponent** - Colisões AABB
-- [x] **ParticleEmitterComponent** - Sistema de partículas
-- [x] **LightComponent** - Iluminação 2D
+#### Components
+- [x] **SpriteComponent** - Sprite rendering
+- [x] **CollisionComponent** - AABB collisions
+- [x] **ParticleEmitterComponent** - Particle system
+- [x] **LightComponent** - 2D lighting
 - [x] **TilemapComponent** - Tilemaps
-- [x] **CameraFollowComponent** - Câmera que segue
-- [x] **DialogueComponent** - Sistema de diálogos
-- [x] **ParallaxComponent** - Fundos parallax
-- [x] **ScriptComponent** - Scripts customizados
+- [x] **CameraFollowComponent** - Following camera
+- [x] **DialogueComponent** - Dialogue system
+- [x] **ParallaxComponent** - Parallax backgrounds
+- [x] **ScriptComponent** - Custom scripts
 - [x] **CheckpointComponent** - Checkpoints
-- [x] **KillZoneComponent** - Áreas de morte
+- [x] **KillZoneComponent** - Death zones
 
-#### Sistemas
-- [x] **Física 2D** - Gravidade, colisões
-- [x] **Animações** - Frame-based sprites
-- [x] **Partículas** - Sistema completo com templates
-- [x] **Iluminação** - Luzes dinâmicas e sombras
-- [x] **Tilemap** - Editor e renderização
-- [x] **Scripts** - Sistema de scripting
+#### Systems
+- [x] **2D Physics** - Gravity, collisions
+- [x] **Animations** - Frame-based sprites
+- [x] **Particles** - Complete system with templates
+- [x] **Lighting** - Dynamic lights and shadows
+- [x] **Tilemap** - Editor and rendering
+- [x] **Scripts** - Scripting system
 
-#### Recursos Avançados
-- [x] Templates de partículas reutilizáveis
-- [x] Presets de iluminação
-- [x] Gerador de scripts (movimento, IA, combate)
+#### Advanced Features
+- [x] Reusable particle templates
+- [x] Lighting presets
+- [x] Script generator (movement, AI, combat)
 - [x] One-way platforms
-- [x] Triggers (colisores sem física)
-- [x] Exportação de projetos (JSON)
-- [x] Importação de projetos
-- [x] Drag & drop de assets
+- [x] Triggers (colliders without physics)
+- [x] Project export (JSON)
+- [x] Project import
+- [x] Drag & drop assets
 
 ### 🚧 Roadmap
 
-- [ ] Sistema de som/música
-- [ ] Tilemaps com auto-tiling
+- [ ] Sound/music system
+- [ ] Tilemaps with auto-tiling
 - [ ] Pathfinding (A*)
-- [ ] Shaders customizáveis
+- [ ] Customizable shaders
 - [ ] Visual scripting (nodes)
 - [ ] Mobile controls
-- [ ] Multiplayer básico
+- [ ] Basic multiplayer
 - [ ] Plugin system
 
 ---
 
-## 🎨 Exemplos
+## 🎨 Examples
 
-### Jogo de Plataforma
+### Platform Game
 
 ```javascript
-// Player com movimento e física
+// Player with movement and physics
 const player = new Entidade('player');
 player.adicionarComponente('SpriteComponent', sprite);
 player.adicionarComponente('CollisionComponent', collider);
@@ -223,207 +230,207 @@ player.adicionarComponente('script_platform', scriptPlataforma);
 player.adicionarComponente('CameraFollowComponent', cameraFollow);
 ```
 
-### Sistema de Partículas (Fogo)
+### Particle System (Fire)
 
 ```javascript
-const fogueira = new Entidade('objeto');
+const campfire = new Entidade('objeto');
 const emitter = new ParticleEmitterComponent();
 emitter.aplicarPreset('fogo');
 emitter.emitindo = true;
-fogueira.adicionarComponente('ParticleEmitterComponent', emitter);
+campfire.adicionarComponente('ParticleEmitterComponent', emitter);
 ```
 
-### NPC com Diálogo
+### NPC with Dialogue
 
 ```javascript
 const npc = new Entidade('npc');
 const dialogue = new DialogueComponent();
 dialogue.adicionarDialogo({
-    texto: "Bem-vindo à vila!",
-    nomePersonagem: "Guardião"
+    texto: "Welcome to the village!",
+    nomePersonagem: "Guardian"
 });
 npc.adicionarComponente('DialogueComponent', dialogue);
 ```
 
-Mais exemplos na [documentação completa](documentation/GAME_ENGINE_COMPLETA.md#exemplos-de-uso).
+More examples in the [complete documentation](documentation/GAME_ENGINE_COMPLETA.md#exemplos-de-uso) (Portuguese).
 
 ---
 
-## 🛠️ Tecnologias
+## 🛠️ Technologies
 
-- **JavaScript ES6+** - Linguagem principal
-- **HTML5 Canvas** - Renderização
-- **CSS3** - Interface do editor
-- **Sem dependências externas** - 100% vanilla
+- **JavaScript ES6+** - Main language
+- **HTML5 Canvas** - Rendering
+- **CSS3** - Editor interface
+- **No external dependencies** - 100% vanilla
 
 ---
 
-## 📖 Tutoriais
+## 📖 Tutorials
 
-### Tutorial 1: Criando um Jogo de Plataforma
+### Tutorial 1: Creating a Platform Game
 
-1. **Setup Inicial**
-   - Crie um novo projeto
-   - Upload de sprite do player (32x32px)
-   - Configure animações: idle, walk, jump
+1. **Initial Setup**
+   - Create a new project
+   - Upload player sprite (32x32px)
+   - Configure animations: idle, walk, jump
 
 2. **Player**
-   - Crie entidade "Player"
-   - Adicione: Sprite, Collision, Script Plataforma
-   - Configure velocidade: 200px/s
-   - Configure pulo: 400px/s
+   - Create "Player" entity
+   - Add: Sprite, Collision, Platform Script
+   - Configure speed: 200px/s
+   - Configure jump: 400px/s
 
-3. **Cenário**
-   - Crie entidade "Tilemap"
-   - Adicione TilemapComponent
-   - Upload de tileset
-   - Pinte o mapa com tiles sólidos
+3. **Scenario**
+   - Create "Tilemap" entity
+   - Add TilemapComponent
+   - Upload tileset
+   - Paint the map with solid tiles
 
-4. **Iluminação**
-   - Adicione LightComponent ao player
-   - Cor: #ffffff, Raio: 150, Intensidade: 0.8
-   - Configure cena: Background escuro
+4. **Lighting**
+   - Add LightComponent to player
+   - Color: #ffffff, Radius: 150, Intensity: 0.8
+   - Configure scene: Dark background
 
-5. **Teste**
-   - Play → Teste movimento e pulo
-   - Ajuste física se necessário
+5. **Test**
+   - Play → Test movement and jump
+   - Adjust physics if needed
 
-6. **Salve**
-   - Salvar projeto → `plataforma_basico.json`
+6. **Save**
+   - Save project → `platform_basic.json`
 
-### Tutorial 2: Sistema de Partículas
+### Tutorial 2: Particle System
 
-1. **Abra Editor de Partículas** (botão ✨)
+1. **Open Particle Editor** (✨ button)
 
-2. **Crie Template**
-   - Nome: "fogo_tocha"
-   - Taxa: 30 part/s
-   - Cor inicial: #ff6600
-   - Cor final: #ff000000
-   - Ângulo: 260-280° (para cima)
-   - Gravidade: -50
+2. **Create Template**
+   - Name: "torch_fire"
+   - Rate: 30 part/s
+   - Start color: #ff6600
+   - End color: #ff000000
+   - Angle: 260-280° (upward)
+   - Gravity: -50
 
-3. **Aplique na Cena**
-   - Crie entidade "Tocha"
-   - Adicione ParticleEmitterComponent
-   - Selecione template "fogo_tocha"
-   - Ative "Emitindo"
+3. **Apply to Scene**
+   - Create "Torch" entity
+   - Add ParticleEmitterComponent
+   - Select "torch_fire" template
+   - Enable "Emitting"
 
-4. **Adicione Luz**
-   - Adicione LightComponent
-   - Cor: #ff6600 (mesma do fogo)
-   - Intensidade: 0.7
+4. **Add Light**
+   - Add LightComponent
+   - Color: #ff6600 (same as fire)
+   - Intensity: 0.7
 
-Mais tutoriais no [manual de uso](documentation/MANUAL_DE_USO.md).
+More tutorials in the [user manual](documentation/MANUAL_DE_USO.md) (Portuguese).
 
 ---
 
 ## 🐛 Troubleshooting
 
-### Assets não carregam
+### Assets don't load
 
-- ✅ Use servidor local (não `file://`)
-- ✅ Verifique console para erros CORS
-- ✅ Use Base64 para testes rápidos
+- ✅ Use local server (not `file://`)
+- ✅ Check console for CORS errors
+- ✅ Use Base64 for quick tests
 
-### Colisões não funcionam
+### Collisions don't work
 
-- ✅ Ambas entidades têm CollisionComponent?
-- ✅ `largura` e `altura` estão definidos?
-- ✅ Colliders não são `isTrigger`?
+- ✅ Do both entities have CollisionComponent?
+- ✅ Are `width` and `height` defined?
+- ✅ Colliders are not `isTrigger`?
 
-### Performance ruim
+### Poor performance
 
-- ✅ Reduza partículas (`maxParticulas`)
-- ✅ Desative gizmos no Play
-- ✅ Use culling (não renderizar fora da tela)
+- ✅ Reduce particles (`maxParticulas`)
+- ✅ Disable gizmos on Play
+- ✅ Use culling (don't render off-screen)
 
-Mais soluções no [troubleshooting guide](documentation/GAME_ENGINE_COMPLETA.md#troubleshooting).
-
----
-
-## 🤝 Contribuindo
-
-Contribuições são bem-vindas!
-
-1. Fork o projeto
-2. Crie uma branch: `git checkout -b feature/minha-feature`
-3. Commit: `git commit -m 'Add: minha feature'`
-4. Push: `git push origin feature/minha-feature`
-5. Abra um Pull Request
-
-### Diretrizes
-
-- Código em **ES6+**
-- Documente funções públicas com **JSDoc**
-- Teste antes de submeter
-- Siga convenção de nomenclatura existente
+More solutions in the [troubleshooting guide](documentation/GAME_ENGINE_COMPLETA.md#troubleshooting) (Portuguese).
 
 ---
 
-## 📜 Licença
+## 🤝 Contributing
 
-Este projeto é open source sob a licença MIT.
+Contributions are welcome!
+
+1. Fork the project
+2. Create a branch: `git checkout -b feature/my-feature`
+3. Commit: `git commit -m 'Add: my feature'`
+4. Push: `git push origin feature/my-feature`
+5. Open a Pull Request
+
+### Guidelines
+
+- Code in **ES6+**
+- Document public functions with **JSDoc**
+- Test before submitting
+- Follow existing naming conventions
 
 ---
 
-## 🎓 Aprendendo Mais
+## 📜 License
 
-### Recursos Educacionais
+This project is open source under the MIT License.
 
-- **[Documentação Completa](documentation/GAME_ENGINE_COMPLETA.md)** - Aprenda tudo sobre a engine
-- **[Exemplos de Código](documentation/GAME_ENGINE_COMPLETA.md#exemplos-de-uso)** - Snippets prontos
-- **Código Fonte** - Explore e aprenda com o código
+---
 
-### Conceitos Importantes
+## 🎓 Learn More
 
-- **ECS (Entity-Component-System)** - Arquitetura modular
+### Educational Resources
+
+- **[Complete Documentation](documentation/GAME_ENGINE_COMPLETA.md)** - Learn everything about the engine (Portuguese)
+- **[Code Examples](documentation/GAME_ENGINE_COMPLETA.md#exemplos-de-uso)** - Ready snippets (Portuguese)
+- **Source Code** - Explore and learn from the code
+
+### Important Concepts
+
+- **ECS (Entity-Component-System)** - Modular architecture
 - **Game Loop** - Update → Render
-- **Delta Time** - Consistência em qualquer FPS
-- **AABB Collision** - Colisões retangulares
+- **Delta Time** - Consistency at any FPS
+- **AABB Collision** - Rectangular collisions
 - **Sprite Animation** - Frame-based
-- **Particle Systems** - Efeitos visuais
+- **Particle Systems** - Visual effects
 
 ---
 
-## 📞 Suporte
+## 📞 Support
 
-- **Bugs**: Abra uma [issue](https://github.com/YOUR-USERNAME/lumina-engine/issues)
-- **Features**: Sugira no [discussions](https://github.com/YOUR-USERNAME/lumina-engine/discussions)
-- **Documentação**: Consulte `/documentation`
+- **Bugs**: Open an [issue](https://github.com/uareke/LuminaGameEngine/issues)
+- **Features**: Suggest in [discussions](https://github.com/uareke/LuminaGameEngine/discussions)
+- **Documentation**: Check `/documentation`
 
 ---
 
 ## 🌟 Showcase
 
-Compartilhe seus jogos criados com a engine! Abra uma issue com a tag `showcase`.
+Share your games created with the engine! Open an issue with the `showcase` tag.
 
 ---
 
-## 🙏 Agradecimentos
+## 🙏 Acknowledgments
 
-Inspirações:
-- **Unity** - Interface e workflow
-- **Godot** - Sistema de nós/componentes
-- **Phaser.js** - API e estrutura
+Inspirations:
+- **Unity** - Interface and workflow
+- **Godot** - Node/component system
+- **Phaser.js** - API and structure
 
 ---
 
-## 📊 Status do Projeto
+## 📊 Project Status
 
 ![Status](https://img.shields.io/badge/status-active-success)
-![Commits](https://img.shields.io/github/commit-activity/m/YOUR-USERNAME/lumina-engine)
-![Issues](https://img.shields.io/github/issues/YOUR-USERNAME/lumina-engine)
+![Commits](https://img.shields.io/github/commit-activity/m/uareke/LuminaGameEngine)
+![Issues](https://img.shields.io/github/issues/uareke/LuminaGameEngine)
 
-**Última atualização**: Dezembro 2025  
-**Versão**: 2.0  
-**Desenvolvedor**: Uarek
+**Last Update**: December 2025  
+**Version**: 2.0  
+**Developer**: Alex Sandro Martins de Araujo
 
 ---
 
 ## 🚀 Let's Build Amazing Games!
 
-**Comece agora** abrindo o `index.html` e criando seu primeiro jogo!
+**Start now** by opening `index.html` and creating your first game!
 
 ![Lumina Engine](https://via.placeholder.com/800x400/2a2a40/c9a0ff?text=Lumina+Engine)
 
