@@ -2568,16 +2568,25 @@ class EditorPrincipal {
         document.getElementById('prop-asset-sprite')?.addEventListener('change', (e) => {
             const assetId = e.target.value;
             let spriteComp = ent.obterComponente('SpriteComponent');
+
+            // Se não tem componente, cria um
+            if (!spriteComp) {
+                spriteComp = new SpriteComponent();
+                ent.adicionarComponente('SpriteComponent', spriteComp);
+            }
+
+            // Se não selecionou asset (Nenhum / Cor Sólida)
             if (!assetId) {
-                if (spriteComp) ent.removerComponente('SpriteComponent');
+                // Limpa o asset mas MANTÉM o componente
+                spriteComp.assetId = null;
+                spriteComp.source = null;
+                spriteComp.carregada = false;
             } else {
-                if (!spriteComp) {
-                    spriteComp = new SpriteComponent();
-                    ent.adicionarComponente('SpriteComponent', spriteComp);
-                }
+                // Define o novo asset
                 spriteComp.assetId = assetId;
                 spriteComp.atualizar(ent, 0);
             }
+
             this.atualizarPainelPropriedades();
         });
 
