@@ -1,0 +1,75 @@
+<!-- 
+    EXEMPLO DE INTEGRAÇÃO DO SISTEMA i18n NO index.html
+    
+    Copie e cole as seguintes linhas nos lugares indicados do seu index.html
+-->
+
+<!-- 1. ADICIONAR NO <head>, após outros links CSS -->
+<link rel="stylesheet" href="i18n/language-selector.css">
+
+<!-- 2. ADICIONAR NA TOOLBAR, geralmente no topo da página -->
+<div class="toolbar">
+    <!-- Botões existentes (Play, Stop, etc) -->
+
+    <!-- ADICIONE ISTO: Container para o seletor de idioma -->
+    <div id="language-selector-container"></div>
+</div>
+
+<!-- 3. ADICIONAR NO <body>, ANTES do fechamento, e ANTES de importar outros scripts -->
+<script type="module">
+    // Inicializar sistema de tradução
+    import i18n from './i18n/LanguageManager.js';
+    import LanguageSelector from './i18n/LanguageSelector.js';
+
+    // Criar seletor de idioma
+    document.addEventListener('DOMContentLoaded', () => {
+        // Inicializa o seletor
+        const languageSelector = new LanguageSelector('#language-selector-container');
+
+        // Atualiza DOM com traduções iniciais
+        i18n.updateDOM();
+
+        console.log('[i18n] Sistema de tradução inicializado');
+    });
+</script>
+
+<!-- 
+    4. EXEMPLO DE USO EM BOTÕES E ELEMENTOS
+    
+    Adicione o atributo data-i18n nos elementos que devem ser traduzidos:
+-->
+
+<!-- Botão de Play -->
+<button data-i18n="toolbar.play">Jogar</button>
+
+<!-- Botão de Salvar -->
+<button data-i18n="btn.save">Salvar</button>
+
+<!-- Input de busca -->
+<input type="text" data-i18n="other.search" placeholder="Buscar...">
+
+<!-- Título de painel -->
+<h3 data-i18n="panel.properties">Propriedades</h3>
+
+<!-- Link de menu -->
+<a href="#" data-i18n="menu.new">Novo</a>
+
+<!--
+    5. ESCUTAR MUDANÇA DE IDIOMA (Opcional)
+    
+    Se você precisa reagir à mudança de idioma no seu código:
+-->
+<script type="module">
+    import i18n from './i18n/LanguageManager.js';
+
+    // Registrar callback
+    i18n.onLanguageChange((newLang, oldLang) => {
+        console.log(`Idioma alterado de ${oldLang} para ${newLang}`);
+
+        // Atualizar coisas específicas do editor
+        // Por exemplo: recarregar painéis, menus dinâmicos, etc
+        if (window.editor) {
+            window.editor.atualizarInterface();
+        }
+    });
+</script>

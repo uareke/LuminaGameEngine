@@ -1,0 +1,54 @@
+/* Language Selector Styles */
+.language-selector {
+    display: inline-block;
+    margin: 0;
+    padding: 0;
+}
+
+.language-select {
+    background: #1a1a1a;
+    color: #ffffff;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.language-select:hover {
+    background: #252525;
+    border-color: #666;
+}
+
+.language-select:focus {
+    border-color: #4a9eff;
+    box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
+}
+
+.language-select option {
+    background: #1a1a1a;
+    color: #ffffff;
+    padding: 8px;
+}
+
+/* Integração com a toolbar do editor */
+#language-selector-container {
+    display: inline-flex;
+    align-items: center;
+    margin-left: auto;
+    padding: 0 10px;
+}
+
+/* Estilo compacto para a toolbar */
+.toolbar .language-selector {
+    margin: 0 5px;
+}
+
+.toolbar .language-select {
+    padding: 4px 8px;
+    font-size: 11px;
+    min-width: 140px;
+}

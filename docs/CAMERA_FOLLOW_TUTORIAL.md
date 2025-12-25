@@ -18,10 +18,12 @@
 <summary><b>🎬 Embedded Player</b></summary>
 
 <div align="center">
-  <iframe width="800" height="450" src="https://www.youtube.com/embed/5M8ysytr_6g?autoplay=1&rel=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+  <iframe width="800" height="450" src="https://www.youtube.com/watch?v=5M8ysytr_6g?autoplay=1&rel=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 </div>
 
 </details>
+
+
 
 ---
 
@@ -37,7 +39,6 @@
 
 ```
 Smooth Speed: 5.0    // How fast camera follows (1-10)
-Offset X: 0          // Horizontal offset from player
 Offset Y: -50        // Vertical offset (negative = above player)
 ```
 
@@ -52,7 +53,6 @@ Press **Play** ▶️ and move around!
 | Parameter | Description | Recommended |
 |-----------|-------------|-------------|
 | **Smooth Speed** | Camera follow speed | 3-7 |
-| **Offset X** | Horizontal position | 0 |
 | **Offset Y** | Vertical position | -30 to -80 |
 
 ---
