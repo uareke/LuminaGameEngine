@@ -160,6 +160,33 @@ const translations = {
         'other.filter': 'Filtrar',
         'other.sort': 'Ordenar',
         'other.language': 'Idioma',
+
+        // Categorias de Componentes
+        'category.system': 'SISTEMA',
+        'category.visual': 'VISUAL',
+        'category.gameplay': 'GAMEPLAY',
+        'category.scripts': 'SCRIPTS',
+        'category.plugins': 'PLUGINS',
+
+        // Nomes de Componentes Adicionais
+        'comp.spriteRenderer': 'Sprite Renderer',
+        'comp.boxCollider': 'Box Collider 2D',
+        'comp.cameraFollow': 'Camera Follow',
+        'comp.tilemapSystem': 'Tilemap System',
+        'comp.parallaxBg': 'Parallax Background',
+        'comp.particleSystem': 'Sistema de Partículas',
+        'comp.dialogueSystem': 'Dialogue System',
+        'comp.killZone': 'Área de Morte',
+        'comp.checkpoint': 'Checkpoint',
+        'comp.scriptEmpty': 'Script Vazio',
+        'comp.rpgTopDown': 'RPG Top-Down',
+        'comp.platformer': 'Plataforma',
+        'comp.aiPatrol': 'IA Patrulha',
+        'comp.deathFade': 'Morte (Fade)',
+        'comp.interaction': 'Interação',
+        'comp.meleeCombat': 'Combate Melee',
+        'comp.respawn': 'Respawn',
+        'comp.floatingText': 'Texto Flutuante',
     },
 
     'en': {
@@ -318,6 +345,33 @@ const translations = {
         'other.filter': 'Filter',
         'other.sort': 'Sort',
         'other.language': 'Language',
+
+        // Component Categories
+        'category.system': 'SYSTEM',
+        'category.visual': 'VISUAL',
+        'category.gameplay': 'GAMEPLAY',
+        'category.scripts': 'SCRIPTS',
+        'category.plugins': 'PLUGINS',
+
+        // Additional Component Names
+        'comp.spriteRenderer': 'Sprite Renderer',
+        'comp.boxCollider': 'Box Collider 2D',
+        'comp.cameraFollow': 'Camera Follow',
+        'comp.tilemapSystem': 'Tilemap System',
+        'comp.parallaxBg': 'Parallax Background',
+        'comp.particleSystem': 'Particle System',
+        'comp.dialogueSystem': 'Dialogue System',
+        'comp.killZone': 'Kill Zone',
+        'comp.checkpoint': 'Checkpoint',
+        'comp.scriptEmpty': 'Empty Script',
+        'comp.rpgTopDown': 'RPG Top-Down',
+        'comp.platformer': 'Platformer',
+        'comp.aiPatrol': 'AI Patrol',
+        'comp.deathFade': 'Death (Fade)',
+        'comp.interaction': 'Interaction',
+        'comp.meleeCombat': 'Melee Combat',
+        'comp.respawn': 'Respawn',
+        'comp.floatingText': 'Floating Text',
     }
 };
 

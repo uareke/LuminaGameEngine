@@ -3175,36 +3175,37 @@ class EditorPrincipal {
     */
     abrirMenuAdiocionarComponente() {
         const ent = this.entidadeSelecionada;
+        const t = window.i18n.t.bind(window.i18n); // Helper para tradução
 
         // Componentes organizados por categoria
         const categorias = {
-            'Sistema': [
-                { id: 'SpriteComponent', nome: 'Sprite Renderer', icon: '🖼️', unico: true },
-                { id: 'CollisionComponent', nome: 'Box Collider 2D', icon: '📦', unico: true },
-                { id: 'CameraFollowComponent', nome: 'Camera Follow', icon: '🎥', unico: true },
-                { id: 'TilemapComponent', nome: 'Tilemap System', icon: '🧱', unico: true }
+            [t('category.system')]: [
+                { id: 'SpriteComponent', nome: t('comp.spriteRenderer'), icon: '🖼️', unico: true },
+                { id: 'CollisionComponent', nome: t('comp.boxCollider'), icon: '📦', unico: true },
+                { id: 'CameraFollowComponent', nome: t('comp.cameraFollow'), icon: '🎥', unico: true },
+                { id: 'TilemapComponent', nome: t('comp.tilemapSystem'), icon: '🧱', unico: true }
             ],
-            'Visual': [
-                { id: 'ParallaxComponent', nome: 'Parallax Background', icon: '🌄', unico: true },
-                { id: 'ParticleEmitterComponent', nome: 'Sistema de Partículas', icon: '✨', unico: false }
+            [t('category.visual')]: [
+                { id: 'ParallaxComponent', nome: t('comp.parallaxBg'), icon: '🌄', unico: true },
+                { id: 'ParticleEmitterComponent', nome: t('comp.particleSystem'), icon: '✨', unico: false }
             ],
-            'Gameplay': [
-                { id: 'DialogueComponent', nome: 'Dialogue System', icon: '💬', unico: true },
-                { id: 'KillZoneComponent', nome: 'Área de Morte', icon: '💀', unico: true },
-                { id: 'CheckpointComponent', nome: 'Checkpoint', icon: '🚩', unico: true }
+            [t('category.gameplay')]: [
+                { id: 'DialogueComponent', nome: t('comp.dialogueSystem'), icon: '💬', unico: true },
+                { id: 'KillZoneComponent', nome: t('comp.killZone'), icon: '💀', unico: true },
+                { id: 'CheckpointComponent', nome: t('comp.checkpoint'), icon: '🚩', unico: true }
             ],
-            'Scripts': [
-                { id: 'ScriptComponent_Custom', nome: 'Script Vazio', icon: '📜', unico: false },
-                { id: 'ScriptComponent_Basic', nome: 'RPG Top-Down', icon: '🎮', unico: false },
-                { id: 'ScriptComponent_Platform', nome: 'Plataforma', icon: '🏃', unico: false },
-                { id: 'ScriptComponent_Patrol', nome: 'IA Patrulha', icon: '🤖', unico: false },
-                { id: 'ScriptComponent_Death', nome: 'Morte (Fade)', icon: '🎞️', unico: false },
-                { id: 'ScriptComponent_Interaction', nome: 'Interação', icon: '💬', unico: false },
-                { id: 'ScriptComponent_Melee', nome: 'Combate Melee', icon: '⚔️', unico: false },
-                { id: 'ScriptComponent_Respawn', nome: 'Respawn', icon: '👻', unico: false }
+            [t('category.scripts')]: [
+                { id: 'ScriptComponent_Custom', nome: t('comp.scriptEmpty'), icon: '📜', unico: false },
+                { id: 'ScriptComponent_Basic', nome: t('comp.rpgTopDown'), icon: '🎮', unico: false },
+                { id: 'ScriptComponent_Platform', nome: t('comp.platformer'), icon: '🏃', unico: false },
+                { id: 'ScriptComponent_Patrol', nome: t('comp.aiPatrol'), icon: '🤖', unico: false },
+                { id: 'ScriptComponent_Death', nome: t('comp.deathFade'), icon: '🎞️', unico: false },
+                { id: 'ScriptComponent_Interaction', nome: t('comp.interaction'), icon: '💬', unico: false },
+                { id: 'ScriptComponent_Melee', nome: t('comp.meleeCombat'), icon: '⚔️', unico: false },
+                { id: 'ScriptComponent_Respawn', nome: t('comp.respawn'), icon: '👻', unico: false }
             ],
-            'Plugins': [
-                { id: 'ScriptComponent_FloatingText', nome: 'Texto Flutuante', icon: '✨', unico: true }
+            [t('category.plugins')]: [
+                { id: 'ScriptComponent_FloatingText', nome: t('comp.floatingText'), icon: '✨', unico: true }
             ]
         };
 
@@ -3250,12 +3251,12 @@ class EditorPrincipal {
         const header = `
             <div style="padding: 20px; border-bottom: 1px solid #444; background: #1a1a2e;">
                 <h3 style="color: #c9a0ff; margin: 0 0 15px 0; font-size: 18px;">
-                    ✨ Adicionar Componente
+                    ✨ ${t('component.add')}
                 </h3>
                 <input 
                     type="text" 
                     id="search-component" 
-                    placeholder="🔍 Buscar componente..."
+                    placeholder="🔍 ${t('other.search')}"
                     style="
                         width: 100%;
                         padding: 10px;
