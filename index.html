@@ -7,6 +7,8 @@
     <title>🎮 Game Engine - Editor Visual (v2)</title>
     <!-- MUDANÇA CRÍTICA: ?v=2 novo cache bust -->
     <link rel="stylesheet" href="css/editor.css?v=2">
+    <!-- Sistema de Tradução (i18n) -->
+    <link rel="stylesheet" href="i18n/language-selector.css">
 </head>
 
 <body>
@@ -60,6 +62,9 @@
                     title="Configurações da Cena (Cor de Fundo)">🎨 Cena</button>
                 <button class="btn-settings" id="btn-settings" title="Configurações">⚙️</button>
             </div>
+
+            <!-- Seletor de Idioma -->
+            <div id="language-selector-container"></div>
         </div>
 
         <!-- Modal de Configurações -->
@@ -559,6 +564,33 @@
             </div>
         </div>
     </div>
+
+    <!-- Sistema de Tradução (i18n) - DEVE SER CARREGADO PRIMEIRO -->
+    <script type="module">
+        import i18n from './i18n/LanguageManager.js';
+        import LanguageSelector from './i18n/LanguageSelector.js';
+
+        // Disponibilizar globalmente para uso no editor
+        window.i18n = i18n;
+
+        // Inicializar quando DOM estiver pronto
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initI18n);
+        } else {
+            initI18n();
+        }
+
+        function initI18n() {
+            // Criar seletor de idioma
+            new LanguageSelector('#language-selector-container');
+
+            // Atualizar DOM com traduções iniciais
+            // (Por enquanto não vamos adicionar data-i18n para não quebrar nada)
+            // Mas o sistema está pronto para uso
+
+            console.log('[i18n] Sistema de tradução inicializado - Idioma:', i18n.getCurrentLanguage());
+        }
+    </script>
 
     <script type="module" src="main.js"></script>
 </body>

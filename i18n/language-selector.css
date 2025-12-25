@@ -11,11 +11,12 @@
     border: 1px solid #444;
     border-radius: 4px;
     padding: 6px 10px;
-    font-size: 12px;
+    font-size: 11px;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     cursor: pointer;
     outline: none;
     transition: all 0.2s ease;
+    min-width: 150px;
 }
 
 .language-select:hover {
@@ -39,16 +40,17 @@
     display: inline-flex;
     align-items: center;
     margin-left: auto;
-    padding: 0 10px;
+    padding: 0 15px;
 }
 
 /* Estilo compacto para a toolbar */
-.toolbar .language-selector {
+.toolbar #language-selector-container {
     margin: 0 5px;
 }
 
 .toolbar .language-select {
-    padding: 4px 8px;
+    padding: 5px 10px;
     font-size: 11px;
-    min-width: 140px;
+    min-width: 150px;
+    height: 30px;
 }
