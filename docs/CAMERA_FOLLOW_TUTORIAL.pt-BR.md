@@ -1,6 +1,6 @@
 # 📷 Tutorial de Camera Follow
 
-> **Guia rápido para fazer a câmera seguir seu jogador**
+> **Guia rápido para fazer a câmera seguir o jogador**
 
 ---
 
@@ -8,7 +8,7 @@
 
 <div align="center">
   
-[![Tutorial Camera Follow](https://img.youtube.com/vi/5M8ysytr_6g/maxresdefault.jpg)](https://youtu.be/5M8ysytr_6g)
+[![Tutorial de Camera Follow](https://img.youtube.com/vi/5M8ysytr_6g/maxresdefault.jpg)](https://youtu.be/5M8ysytr_6g)
 
 **[▶️ Assistir no YouTube](https://youtu.be/5M8ysytr_6g)**
 
@@ -25,50 +25,21 @@
 
 ---
 
-## 🚀 Passos Rápidos
+## 📋 O Que Você Vai Aprender
 
-### 1️⃣ Adicionar Componente Camera Follow
-
-1. Selecione sua entidade **Player**
-2. Clique em **"+ Adicionar Componente"**
-3. Escolha **"Camera Follow"**
-
-### 2️⃣ Configurar Parâmetros
-
-```
-Smooth Speed: 5.0    // Velocidade da câmera (1-10)
-Offset X: 0          // Deslocamento horizontal
-Offset Y: -50        // Deslocamento vertical (negativo = acima do jogador)
-```
-
-### 3️⃣ Testar
-
-Pressione **Play** ▶️ e se mova!
+1. ✅ **Selecionar o Player**
+2. ✅ **Adicionar Componente Camera Follow**
+3. ✅ **Configurar velocidade suave** (recomendado: 5)
+4. ✅ **Ajustar offset da câmera** (posição X e Y)
+5. ✅ **Testar a câmera** seguindo o jogador
 
 ---
 
-## ⚙️ Parâmetros
+## 📚 Tutoriais Relacionados
 
-| Parâmetro | Descrição | Recomendado |
-|-----------|-----------|-------------|
-| **Smooth Speed** | Velocidade da câmera | 3-7 |
-| **Offset X** | Posição horizontal | 0 |
-| **Offset Y** | Posição vertical | -30 a -80 |
-
----
-
-## 💡 Dicas
-
-✅ **Smooth speed baixo** = Mais suave mas mais lento  
-✅ **Smooth speed alto** = Instantâneo mas rígido  
-✅ **Offset Y negativo** = Câmera centralizada acima do jogador  
-
----
-
-## 📚 Relacionados
-
-- **[Tutorial de Plataforma](PLATFORMER_TUTORIAL.pt-BR.md)** - Crie seu jogador primeiro
-- **[Documentação Completa](GAME_ENGINE_COMPLETA.pt-BR.md)** - Guia completo da engine
+- **[Tutorial de Plataforma](PLATFORMER_TUTORIAL.pt-BR.md)** - Setup completo de plataforma
+- **[Tutorial de Gravidade](GRAVITY_TUTORIAL.pt-BR.md)** - Entendendo gravidade
+- **[Tutorial de Morte & Respawn](DEATH_RESPAWN_TUTORIAL.pt-BR.md)** - Zonas de morte e checkpoints
 
 ---
 

@@ -18,57 +18,28 @@
 <summary><b>🎬 Embedded Player</b></summary>
 
 <div align="center">
-  <iframe width="800" height="450" src="https://www.youtube.com/watch?v=5M8ysytr_6g?autoplay=1&rel=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+  <iframe width="800" height="450" src="https://www.youtube.com/embed/5M8ysytr_6g?autoplay=1&rel=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 </div>
 
 </details>
 
+---
 
+## 📋 What You'll Learn
+
+1. ✅ **Select your Player** entity
+2. ✅ **Add Camera Follow Component**
+3. ✅ **Configure smooth speed** (recommended: 5)
+4. ✅ **Adjust camera offset** (X and Y position)
+5. ✅ **Test the camera** following your player
 
 ---
 
-## 🚀 Quick Steps
+## 📚 Related Tutorials
 
-### 1️⃣ Add Camera Follow Component
-
-1. Select your **Player** entity
-2. Click **"+ Add Component"**
-3. Choose **"Camera Follow"**
-
-### 2️⃣ Configure Settings
-
-```
-Smooth Speed: 5.0    // How fast camera follows (1-10)
-Offset Y: -50        // Vertical offset (negative = above player)
-```
-
-### 3️⃣ Test
-
-Press **Play** ▶️ and move around!
-
----
-
-## ⚙️ Parameters
-
-| Parameter | Description | Recommended |
-|-----------|-------------|-------------|
-| **Smooth Speed** | Camera follow speed | 3-7 |
-| **Offset Y** | Vertical position | -30 to -80 |
-
----
-
-## 💡 Tips
-
-✅ **Lower smooth speed** = Smoother but slower  
-✅ **Higher smooth speed** = Instant but rigid  
-✅ **Negative Y offset** = Camera centered above player  
-
----
-
-## 📚 Related
-
-- **[Platformer Tutorial](PLATFORMER_TUTORIAL.md)** - Create your player first
-- **[Complete Documentation](GAME_ENGINE_COMPLETE.md)** - Full engine guide
+- **[Platformer Tutorial](PLATFORMER_TUTORIAL.md)** - Complete platformer setup
+- **[Gravity Tutorial](GRAVITY_TUTORIAL.md)** - Understanding gravity
+- **[Death & Respawn Tutorial](DEATH_RESPAWN_TUTORIAL.md)** - Kill zones and checkpoints
 
 ---
 
