@@ -29,17 +29,15 @@
 
 ### 1️⃣ Selecione Seu Player
 - Clique na entidade Player na hierarquia
-- Abra o painel de Propriedades
+- Abra o painel de Propriedades à direita
 
-### 2️⃣ Ative a Gravidade
-No painel de propriedades, marque:
-```
-☑️ Tem Gravidade (temGravidade)
-```
+### 2️⃣ Encontre a Seção Physics Body
+Desça até a seção **🏋️ Physics Body**
 
-### 3️⃣ Ajuste o Valor da Gravidade
+### 3️⃣ Ative a Gravidade
+Marque a caixa:
 ```
-Gravidade: 980    // Gravidade padrão similar à Terra
+☑️ Aplicar Gravidade
 ```
 
 ### 4️⃣ Testar
@@ -47,31 +45,61 @@ Pressione **Play** ▶️ e veja seu jogador cair!
 
 ---
 
-## ⚙️ Configurações de Gravidade
+## ⚙️ Como Funciona a Gravidade
 
-| Valor | Efeito |
-|-------|--------|
-| **0** | Sem gravidade (flutuando) |
-| **500** | Gravidade leve (tipo lua) |
-| **980** | Gravidade normal (Terra) ✅ |
-| **1500** | Gravidade pesada (queda rápida) |
-| **2000** | Muito pesada (queda instant ânea) |
+### Na Lumina Engine:
+- **Gravidade é ON/OFF** - Apenas um checkbox!
+- **Valor padrão**: 980 (gravidade similar à Terra)
+- **Sem ajuste manual** - O valor é fixo no código
+
+### O que o checkbox faz:
+- ✅ **Marcado** = Jogador cai com gravidade (980)
+- ❌ **Desmarcado** = Jogador flutua (sem gravidade)
 
 ---
 
-## 🎯 Configuração Comum
+## 🎯 Casos de Uso Comuns
 
 ### Para Jogos de Plataforma:
 ```
-Tem Gravidade: ✅ Sim
-Gravidade: 980
-Força do Pulo: 600
+☑️ Aplicar Gravidade: SIM
 ```
+Jogador cairá e precisará de plataformas para ficar em pé.
 
-### Para Jogos Top-Down:
+### Para Jogos Top-Down (estilo Zelda):
 ```
-Tem Gravidade: ❌ Não
-Gravidade: 0
+☐ Aplicar Gravidade: NÃO
+```
+Jogador se move livremente sem cair.
+
+### Para Jogos de Voo:
+```
+☐ Aplicar Gravidade: NÃO
+```
+Jogador controla movimento para cima/baixo manualmente.
+
+---
+
+## 💡 Notas Importantes
+
+✅ A gravidade é **automaticamente definida como 980** quando ativada  
+✅ Você **não pode mudar o valor** no editor (está no código)  
+✅ Para modificar o valor da gravidade, é necessário **editar o código** em `Entidade.js`  
+✅ A maioria dos jogos de plataforma funciona perfeitamente com o valor padrão 980  
+
+---
+
+## 🔧 Avançado: Mudando o Valor da Gravidade no Código
+
+Se precisar de um valor diferente de gravidade, edite `entidades/Entidade.js`:
+
+```javascript
+// Linha ~49 em Entidade.js
+this.gravidade = 980;  // Mude este valor
+
+// Exemplos:
+this.gravidade = 500;   // Mais leve (tipo lua)
+this.gravidade = 1500;  // Mais pesada (queda rápida)
 ```
 
 ---

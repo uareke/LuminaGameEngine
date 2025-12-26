@@ -29,17 +29,15 @@
 
 ### 1️⃣ Select Your Player
 - Click on your Player entity in the hierarchy
-- Open the Properties panel
+- Open the Properties panel on the right
 
-### 2️⃣ Enable Gravity
-In the properties panel, check:
-```
-☑️ Has Gravity (temGravidade)
-```
+### 2️⃣ Find Physics Body Section
+Scroll down to the **🏋️ Physics Body** section
 
-### 3️⃣ Adjust Gravity Value
+### 3️⃣ Enable Gravity
+Check the box:
 ```
-Gravity: 980    // Default Earth-like gravity
+☑️ Aplicar Gravidade (Apply Gravity)
 ```
 
 ### 4️⃣ Test
@@ -47,31 +45,61 @@ Press **Play** ▶️ and watch your player fall!
 
 ---
 
-## ⚙️ Gravity Settings
+## ⚙️ How Gravity Works
 
-| Value | Effect |
-|-------|--------|
-| **0** | No gravity (floating) |
-| **500** | Light gravity (moon-like) |
-| **980** | Normal gravity (Earth) ✅ |
-| **1500** | Heavy gravity (fast fall) |
-| **2000** | Very heavy (instant drop) |
+### In Lumina Engine:
+- **Gravity is ON/OFF** - Just a checkbox!
+- **Default value**: 980 (Earth-like gravity)
+- **No manual adjustment** - The value is fixed in code
+
+### What the checkbox does:
+- ✅ **Checked** = Player falls down with gravity (980)
+- ❌ **Unchecked** = Player floats (no gravity)
 
 ---
 
-## 🎯 Common Setup
+## 🎯 Common Use Cases
 
 ### For Platformer Games:
 ```
-Has Gravity: ✅ Yes
-Gravity: 980
-Jump Force: 600
+☑️ Aplicar Gravidade: YES
 ```
+Player will fall and need platforms to stand on.
 
-### For Top-Down Games:
+### For Top-Down Games (Zelda-style):
 ```
-Has Gravity: ❌ No
-Gravity: 0
+☐ Aplicar Gravidade: NO
+```
+Player moves freely without falling.
+
+### For Flying Games:
+```
+☐ Aplicar Gravidade: NO
+```
+Player controls up/down movement manually.
+
+---
+
+## 💡 Important Notes
+
+✅ Gravity is **automatically set to 980** when enabled  
+✅ You **cannot change the value** in the editor (it's hardcoded)  
+✅ To modify gravity value, you need to **edit the code** in `Entidade.js`  
+✅ Most platformer games work perfectly with the default 980 value  
+
+---
+
+## 🔧 Advanced: Changing Gravity Value in Code
+
+If you need a different gravity value, edit `entidades/Entidade.js`:
+
+```javascript
+// Line ~49 in Entidade.js
+this.gravidade = 980;  // Change this value
+
+// Examples:
+this.gravidade = 500;   // Lighter (moon-like)
+this.gravidade = 1500;  // Heavier (faster fall)
 ```
 
 ---
