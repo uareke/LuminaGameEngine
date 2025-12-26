@@ -122,6 +122,8 @@ Open `index.html` in a modern browser (recommended: Chrome, Firefox, Edge)
   - 📺 **[Watch Video](https://youtu.be/cUXe44JrpEs)** - Step-by-step video guide
 - **[📷 Camera Follow Tutorial](docs/CAMERA_FOLLOW_TUTORIAL.md)** - Make camera follow the player ([English](docs/CAMERA_FOLLOW_TUTORIAL.md) | [Português](docs/CAMERA_FOLLOW_TUTORIAL.pt-BR.md))
   - 📺 **[Watch Video](https://youtu.be/5M8ysytr_6g)** - Quick setup guide
+- **[🌍 Gravity Tutorial](docs/GRAVITY_TUTORIAL.md)** - Add gravity to your player ([English](docs/GRAVITY_TUTORIAL.md) | [Português](docs/GRAVITY_TUTORIAL.pt-BR.md))
+  - 📺 **[Watch Video](https://youtu.be/Tpd6zxvGj38)** - Basic gravity setup
 
   
 

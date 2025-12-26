@@ -122,6 +122,8 @@ Abra `index.html` em um navegador moderno (recomendado: Chrome, Firefox, Edge)
   - 📺 **[Assistir Vídeo](https://youtu.be/cUXe44JrpEs)** - Guia em vídeo passo a passo
 - **[📷 Tutorial de Camera Follow](docs/CAMERA_FOLLOW_TUTORIAL.pt-BR.md)** - Fazer a câmera seguir o jogador ([Português](docs/CAMERA_FOLLOW_TUTORIAL.pt-BR.md) | [English](docs/CAMERA_FOLLOW_TUTORIAL.md))
   - 📺 **[Assistir Vídeo](https://youtu.be/5M8ysytr_6g)** - Guia rápido de configuração
+- **[🌍 Tutorial de Gravidade](docs/GRAVITY_TUTORIAL.pt-BR.md)** - Adicionar gravidade ao jogador ([Português](docs/GRAVITY_TUTORIAL.pt-BR.md) | [English](docs/GRAVITY_TUTORIAL.md))
+  - 📺 **[Assistir Vídeo](https://youtu.be/Tpd6zxvGj38)** - Configuração básica de gravidade
 
 ### Guias Específicos
 - **[🎯 Manual de Uso](docs/MANUAL_DE_USO.pt-BR.md)** - Como usar o editor
