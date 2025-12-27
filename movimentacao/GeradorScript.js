@@ -703,6 +703,8 @@ const animRun = 'run';
 const animJump = 'jump';
 const animFall = 'fall';
 const animCrouch = 'crouch';
+const animCrouchWalk = 'crouchWalk'; // Andar agachado
+const animSlide = 'slide'; // Deslizar
 const animWallSlide = 'wallSlide'; // Nova animação opcional
 
 class MovimentacaoPlataformaScript {
@@ -729,6 +731,16 @@ class MovimentacaoPlataformaScript {
         this.wall_tolerancia_esq = 25; // Distância (px) p/ Esquerda
         this.wall_margemChao = 5; // Altura (px) diferenciar chão
         
+        // [CROUCH WALK]
+        this.SECTION_Crouch = 'Agachado';
+        this.crouch_velocidade = ${velocidadeHorizontal * 0.5}; // Velocidade ao andar agachado (50% normal)
+        
+        // [SLIDE]
+        this.SECTION_Slide = 'Deslizar';
+        this.slide_velocidade = ${velocidadeHorizontal * 2.2}; // Velocidade do slide (220% normal)
+        this.slide_duracao = 0.4; // Duração do slide (segundos)
+        this.slide_cooldown = 0.8; // Tempo de espera entre slides (segundos)
+        
         // [OUTROS AJUSTES GAMEPLAY]
         this.SECTION_Gameplay = 'Timers';
         this.coyoteTime = 0.15; // Tempo para pular após cair (s)
@@ -740,6 +752,11 @@ class MovimentacaoPlataformaScript {
         this.direcaoParede = 0; // -1 = esquerda, 1 = direita
         this.wallJumpCooldown = 0;
         this.wallStickBuffer = 0; // Buffer para manter naParede estável
+        
+        // Slide
+        this.slideTimer = 0; // Tempo restante do slide
+        this.slideCooldownTimer = 0; // Cooldown entre slides
+        this.slideDirecao = 0; // Direção do slide (1 = direita, -1 = esquerda)
 
         this.estado = 'parado';
 
@@ -779,14 +796,36 @@ class MovimentacaoPlataformaScript {
         let vx = 0;
         const noChao = this.entidade.noChao;
         let direcaoInput = 0;
+        
+        // Verifica se está em slide
+        const emSlide = this.slideTimer > 0;
 
         // Inputs Especiais
         const correndo = engine.teclaPressionada('Shift');
-        const agachando = (engine.teclaPressionada('s') || engine.teclaPressionada('S') || engine.teclaPressionada('ArrowDown')) && noChao;
+        const agachando = (engine.teclaPressionada('s') || engine.teclaPressionada('S') || engine.teclaPressionada('ArrowDown')) && noChao && !emSlide;
+        
+        // Slide: Pressionar C ou Ctrl enquanto está se movendo no chão
+        const tentouSlide = (engine.teclaPrecionadaAgora('c') || engine.teclaPrecionadaAgora('C') || engine.teclaPrecionadaAgora('Control'));
+        
+        if (tentouSlide && noChao && !emSlide && this.slideCooldownTimer <= 0 && Math.abs(this.entidade.velocidadeX) > 10) {
+            // Inicia slide
+            this.slideTimer = this.slide_duracao;
+            this.slideDirecao = this.entidade.velocidadeX > 0 ? 1 : -1;
+            this.estado = 'slide';
+        }
 
         // Teclas A/D ou Setas para movimento horizontal
-        if (!agachando && this.wallJumpCooldown <= 0) {
-            const vel = correndo ? this.mov_corrida : this.mov_velocidade;
+        if (this.wallJumpCooldown <= 0 && !emSlide) {
+            // Define velocidade base
+            let vel = this.mov_velocidade;
+            
+            if (agachando) {
+                // Movimento agachado - velocidade reduzida
+                vel = this.crouch_velocidade;
+            } else if (correndo) {
+                // Correndo - velocidade aumentada
+                vel = this.mov_corrida;
+            }
 
             if (engine.teclaPressionada('a') || engine.teclaPressionada('A') || engine.teclaPressionada('ArrowLeft')) {
                 vx = -vel;
@@ -798,6 +837,10 @@ class MovimentacaoPlataformaScript {
             }
 
             this.entidade.velocidadeX = vx;
+        } else if (emSlide) {
+            // Durante slide: movimento automático na direção do slide
+            this.entidade.velocidadeX = this.slideDirecao * this.slide_velocidade;
+            direcaoInput = this.slideDirecao;
         } else if (this.wallJumpCooldown > 0) {
             // Mantém inércia durante cooldown do walljump (opcional)
         }
@@ -823,7 +866,9 @@ class MovimentacaoPlataformaScript {
         }
 
         // Atualizar estado lógico
-        if (this.wallJumpCooldown > 0) {
+        if (emSlide) {
+            this.estado = 'slide';
+        } else if (this.wallJumpCooldown > 0) {
              this.estado = 'pulando';
         } else if (this.naParede && !noChao) {
             this.estado = 'naParede';
@@ -831,7 +876,12 @@ class MovimentacaoPlataformaScript {
             if (this.entidade.velocidadeY < 0) this.estado = 'pulando';
             else this.estado = 'caindo';
         } else if (agachando) {
-            this.estado = 'agachado';
+            // Diferencia entre agachado parado e andando
+            if (vx !== 0) {
+                this.estado = 'crouchWalk'; // Novo estado
+            } else {
+                this.estado = 'agachado';
+            }
         } else if (vx !== 0) {
             this.estado = correndo ? 'correndo' : 'andando';
         } else {
@@ -1040,6 +1090,18 @@ class MovimentacaoPlataformaScript {
         
         // Wall Stick Buffer (decrementar)
         if (this.wallStickBuffer > 0) this.wallStickBuffer -= deltaTime;
+        
+        // Slide Timer (decrementar)
+        if (this.slideTimer > 0) {
+            this.slideTimer -= deltaTime;
+            if (this.slideTimer <= 0) {
+                // Slide terminou, inicia cooldown
+                this.slideCooldownTimer = this.slide_cooldown;
+            }
+        }
+        
+        // Slide Cooldown (decrementar)
+        if (this.slideCooldownTimer > 0) this.slideCooldownTimer -= deltaTime;
 
         // Coyote Time
         if (this.entidade.noChao) {
@@ -1105,7 +1167,23 @@ class MovimentacaoPlataformaScript {
                 if (this.entidade.velocidadeY < 0) sprite.play(animJump);
                 else sprite.play(animFall) || sprite.play(animJump);
             } else {
-                if (this.estado === 'agachado') {
+                if (this.estado === 'slide') {
+                    // Slide - animação de deslizar
+                    if (sprite.animacoes && sprite.animacoes[animSlide]) {
+                        sprite.play(animSlide);
+                    } else if (sprite.animacoes && sprite.animacoes[animCrouch]) {
+                        sprite.play(animCrouch);
+                    } else {
+                        sprite.play(animIdle);
+                    }
+                } else if (this.estado === 'crouchWalk') {
+                    // Andar agachado - tenta usar animação específica, senão usa crouch normal
+                    if (sprite.animacoes && sprite.animacoes[animCrouchWalk]) {
+                        sprite.play(animCrouchWalk);
+                    } else {
+                        sprite.play(animCrouch) || sprite.play(animIdle);
+                    }
+                } else if (this.estado === 'agachado') {
                     sprite.play(animCrouch) || sprite.play(animIdle);
                 } else if (Math.abs(this.entidade.velocidadeX) > 10) {
                     if (this.estado === 'correndo' && sprite.animacoes && sprite.animacoes[animRun]) {

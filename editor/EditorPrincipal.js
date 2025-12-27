@@ -1846,6 +1846,25 @@ class EditorPrincipal {
                     }
                     spriteHtml += `</div></div>`;
                 }
+            } else {
+                // Sem asset selecionado - mostra animações padrão sugeridas
+                spriteHtml += `<div style="background:#222; padding:5px; border-radius:4px; margin-bottom:5px;">`;
+                spriteHtml += `<div style="font-size:10px; color:#aaa; margin-bottom:5px;">💡 Standard Animations (Configure depois de adicionar Asset):</div>`;
+                spriteHtml += `<div style="display:flex; flex-wrap:wrap; gap:5px;">`;
+
+                // Animações padrão esperadas pelos scripts
+                const animacoesPadrao = [
+                    'idle', 'walk', 'run', 'jump', 'fall',
+                    'crouch', 'crouchWalk', 'slide',
+                    'attack', 'wallSlide'
+                ];
+
+                for (const nome of animacoesPadrao) {
+                    spriteHtml += `<div style="background:#333; color:#888; padding:2px 6px; border-radius:10px; font-size:10px; border:1px dashed #555;">${nome}</div>`;
+                }
+                spriteHtml += `</div>`;
+                spriteHtml += `<div style="font-size:9px; color:#666; margin-top:5px; font-style:italic;">Adicione um Asset de Sprite para configurar animações</div>`;
+                spriteHtml += `</div>`;
             }
 
             spriteHtml += `
