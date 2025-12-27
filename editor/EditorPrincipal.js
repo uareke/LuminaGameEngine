@@ -1180,7 +1180,7 @@ class EditorPrincipal {
         const mouseX = evento.clientX - rect.left;
         const mouseY = evento.clientY - rect.top;
 
-        const delta = evento.deltaY > 0 ? -0.1 : 0.1;
+        const delta = evento.deltaY > 0 ? -0.025 : 0.025;
         this.camera.aumentarZoom(delta, { x: mouseX, y: mouseY });
 
         // Atualizar UI
