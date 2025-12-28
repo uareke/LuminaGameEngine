@@ -12,7 +12,10 @@ class GeradorScript {
 
             'IA Inimigo (Patrulha)': this.gerarIAInimigoPatrulha.bind(this),
             'Combate Melee': this.gerarScriptAtaqueMelee.bind(this),
+            'Stats RPG': this.gerarScriptStatsRPG.bind(this),
             'Sistema de Morte': this.gerarScriptMorte.bind(this),
+            'Morte com Animação': this.gerarScriptMorteAnimacao.bind(this),
+            'Simulador de Morte': this.gerarScriptSimuladorMorte.bind(this),
             'Sistema de Respawn': this.gerarScriptRespawnInimigo.bind(this),
             'Texto Flutuante': this.gerarScriptTextoFlutuante.bind(this)
         };
@@ -703,7 +706,9 @@ const animRun = 'run';
 const animJump = 'jump';
 const animFall = 'fall';
 const animCrouch = 'crouch';
-const animWallSlide = 'wallSlide'; // Nova animação opcional
+const animCrouchWalk = 'crouchWalk'; // Andar agachado
+const animSlide = 'slide'; // Deslizar
+const animWallSlide = 'wallSlide'; // Wall slide
 
 class MovimentacaoPlataformaScript {
     constructor(entidade) {
@@ -729,6 +734,17 @@ class MovimentacaoPlataformaScript {
         this.wall_tolerancia_esq = 25; // Distância (px) p/ Esquerda
         this.wall_margemChao = 5; // Altura (px) diferenciar chão
         
+        // [CROUCH WALK]
+        this.SECTION_Crouch = 'Agachado';
+        this.crouch_velocidade = ${velocidadeHorizontal * 0.5}; // Velocidade ao andar agachado (50% normal)
+        
+        // [SLIDE]
+        this.SECTION_Slide = 'Deslizar';
+        this.slide_velocidade = ${velocidadeHorizontal * 2.2}; // Velocidade do slide (220% normal)
+        this.slide_duracao = 0.4; // Duração do slide (segundos)
+        this.slide_cooldown = 0.8; // Tempo de espera entre slides (segundos)
+        
+
         // [OUTROS AJUSTES GAMEPLAY]
         this.SECTION_Gameplay = 'Timers';
         this.coyoteTime = 0.15; // Tempo para pular após cair (s)
@@ -740,6 +756,12 @@ class MovimentacaoPlataformaScript {
         this.direcaoParede = 0; // -1 = esquerda, 1 = direita
         this.wallJumpCooldown = 0;
         this.wallStickBuffer = 0; // Buffer para manter naParede estável
+        
+        // Slide
+        this.slideTimer = 0; // Tempo restante do slide
+        this.slideCooldownTimer = 0; // Cooldown entre slides
+        this.slideDirecao = 0; // Direção do slide (1 = direita, -1 = esquerda)
+        
 
         this.estado = 'parado';
 
@@ -779,14 +801,36 @@ class MovimentacaoPlataformaScript {
         let vx = 0;
         const noChao = this.entidade.noChao;
         let direcaoInput = 0;
+        
+        // Verifica se está em slide
+        const emSlide = this.slideTimer > 0;
 
         // Inputs Especiais
         const correndo = engine.teclaPressionada('Shift');
-        const agachando = (engine.teclaPressionada('s') || engine.teclaPressionada('S') || engine.teclaPressionada('ArrowDown')) && noChao;
+        const agachando = (engine.teclaPressionada('s') || engine.teclaPressionada('S') || engine.teclaPressionada('ArrowDown')) && noChao && !emSlide;
+        
+        // Slide: Pressionar C ou Ctrl enquanto está se movendo no chão
+        const tentouSlide = (engine.teclaPrecionadaAgora('c') || engine.teclaPrecionadaAgora('C') || engine.teclaPrecionadaAgora('Control'));
+        
+        if (tentouSlide && noChao && !emSlide && this.slideCooldownTimer <= 0 && Math.abs(this.entidade.velocidadeX) > 10) {
+            // Inicia slide
+            this.slideTimer = this.slide_duracao;
+            this.slideDirecao = this.entidade.velocidadeX > 0 ? 1 : -1;
+            this.estado = 'slide';
+        }
 
         // Teclas A/D ou Setas para movimento horizontal
-        if (!agachando && this.wallJumpCooldown <= 0) {
-            const vel = correndo ? this.mov_corrida : this.mov_velocidade;
+        if (this.wallJumpCooldown <= 0 && !emSlide) {
+            // Define velocidade base
+            let vel = this.mov_velocidade;
+            
+            if (agachando) {
+                // Movimento agachado - velocidade reduzida
+                vel = this.crouch_velocidade;
+            } else if (correndo) {
+                // Correndo - velocidade aumentada
+                vel = this.mov_corrida;
+            }
 
             if (engine.teclaPressionada('a') || engine.teclaPressionada('A') || engine.teclaPressionada('ArrowLeft')) {
                 vx = -vel;
@@ -798,11 +842,15 @@ class MovimentacaoPlataformaScript {
             }
 
             this.entidade.velocidadeX = vx;
+        } else if (emSlide) {
+            // Durante slide: movimento automático na direção do slide
+            this.entidade.velocidadeX = this.slideDirecao * this.slide_velocidade;
+            direcaoInput = this.slideDirecao;
         } else if (this.wallJumpCooldown > 0) {
             // Mantém inércia durante cooldown do walljump (opcional)
         }
 
-        // Detectar Parede SEMPRE (para debug)
+        // Detectar Parede SEMPRE
         this.detectarParede(direcaoInput);
         
         // Reseta se estiver no chão
@@ -823,7 +871,9 @@ class MovimentacaoPlataformaScript {
         }
 
         // Atualizar estado lógico
-        if (this.wallJumpCooldown > 0) {
+        if (emSlide) {
+            this.estado = 'slide';
+        } else if (this.wallJumpCooldown > 0) {
              this.estado = 'pulando';
         } else if (this.naParede && !noChao) {
             this.estado = 'naParede';
@@ -831,7 +881,12 @@ class MovimentacaoPlataformaScript {
             if (this.entidade.velocidadeY < 0) this.estado = 'pulando';
             else this.estado = 'caindo';
         } else if (agachando) {
-            this.estado = 'agachado';
+            // Diferencia entre agachado parado e andando
+            if (vx !== 0) {
+                this.estado = 'crouchWalk'; // Novo estado
+            } else {
+                this.estado = 'agachado';
+            }
         } else if (vx !== 0) {
             this.estado = correndo ? 'correndo' : 'andando';
         } else {
@@ -856,6 +911,7 @@ class MovimentacaoPlataformaScript {
         this.naParede = false;
         console.log('🧗 Wall Jump!');
     }
+
 
     detectarParede(direcaoInput) {
         // Só detecta parede se estiver NO AR
@@ -1022,7 +1078,7 @@ class MovimentacaoPlataformaScript {
             }
         }
 
-        // Aplicar buffer para manter estado estável em tilesets
+        // Aplicar buffer para manter estado estável em tile sets
         if (paredeEncontrada) {
             this.naParede = true;
             this.wallStickBuffer = 0.15; // Mantém por 150ms mesmo se perder contato
@@ -1035,11 +1091,80 @@ class MovimentacaoPlataformaScript {
     }
 
     atualizar(deltaTime) {
+        // ===== VERIFICAÇÃO DE MORTE =====
+        if (!this._morto && this.entidade.hp !== undefined && this.entidade.hp <= 0) {
+            this._morto = true;
+            this._tempoMorte = 0; // Inicia contador
+            this.entidade.velocidadeX = 0;
+            this.entidade.velocidadeY = 0;
+            
+            // Toca animação death
+            const sprite = this.entidade.obterComponente('SpriteComponent');
+            if (sprite) {
+                sprite.autoplayAnim = ''; // Desabilita autoplay
+                sprite.play('death');
+                
+                // Garante que não faz loop
+                if (sprite.animacoes && sprite.animacoes['death']) {
+                    sprite.animacoes['death'].loop = false;
+                }
+            }
+            
+            console.log('💀 Player morreu! Animação death iniciada.');
+        }
+        
+        // Se morto, aguarda animação completar e ativa DeathScreen
+        if (this._morto) {
+            this.entidade.velocidadeX = 0;
+            this.entidade.velocidadeY = 0;
+            
+            // Incrementa tempo de morte
+            if (!this._tempoMorte) this._tempoMorte = 0;
+            this._tempoMorte += deltaTime;
+            
+            // Aguarda 1.5s (tempo suficiente para animação) e ativa DeathScreen
+            if (this._tempoMorte >= 1.5 && !this._deathScreenAtivado) {
+                this._deathScreenAtivado = true;
+                
+                console.log('💀 Procurando DeathScreen...');
+                
+                // Procura o DeathScreen em todos os componentes
+                for (const [tipo, comp] of this.entidade.componentes.entries()) {
+                    if (comp.tipo === 'ScriptComponent' && comp.instance) {
+                        const nome = comp.instance.constructor.name;
+                        console.log('🔍 Script encontrado:', nome);
+                        
+                        if (nome === 'DeathScreenScript') {
+                            console.log('💀 Ativando Death Screen!');
+                            if (comp.instance.onDeath) {
+                                comp.instance.onDeath(null, null); // Chama o método correto
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            return; // Para aqui - não processa movimento nem animações
+        }
+        
         // Cooldown
         if (this.wallJumpCooldown > 0) this.wallJumpCooldown -= deltaTime;
         
         // Wall Stick Buffer (decrementar)
         if (this.wallStickBuffer > 0) this.wallStickBuffer -= deltaTime;
+        
+        // Slide Timer (decrementar)
+        if (this.slideTimer > 0) {
+            this.slideTimer -= deltaTime;
+            if (this.slideTimer <= 0) {
+                // Slide terminou, inicia cooldown
+                this.slideCooldownTimer = this.slide_cooldown;
+            }
+        }
+        
+        // Slide Cooldown (decrementar)
+        if (this.slideCooldownTimer > 0) this.slideCooldownTimer -= deltaTime;
 
         // Coyote Time
         if (this.entidade.noChao) {
@@ -1105,7 +1230,23 @@ class MovimentacaoPlataformaScript {
                 if (this.entidade.velocidadeY < 0) sprite.play(animJump);
                 else sprite.play(animFall) || sprite.play(animJump);
             } else {
-                if (this.estado === 'agachado') {
+                if (this.estado === 'slide') {
+                    // Slide - animação de deslizar
+                    if (sprite.animacoes && sprite.animacoes[animSlide]) {
+                        sprite.play(animSlide);
+                    } else if (sprite.animacoes && sprite.animacoes[animCrouch]) {
+                        sprite.play(animCrouch);
+                    } else {
+                        sprite.play(animIdle);
+                    }
+                } else if (this.estado === 'crouchWalk') {
+                    // Andar agachado - tenta usar animação específica, senão usa crouch normal
+                    if (sprite.animacoes && sprite.animacoes[animCrouchWalk]) {
+                        sprite.play(animCrouchWalk);
+                    } else {
+                        sprite.play(animCrouch) || sprite.play(animIdle);
+                    }
+                } else if (this.estado === 'agachado') {
                     sprite.play(animCrouch) || sprite.play(animIdle);
                 } else if (Math.abs(this.entidade.velocidadeX) > 10) {
                     if (this.estado === 'correndo' && sprite.animacoes && sprite.animacoes[animRun]) {
@@ -1569,6 +1710,36 @@ class DeathScreenScript {
             this.entidade.gravidade = this._salvoGravidade;
         }
 
+        // ===== RESET DO ESTADO DE MORTE =====
+        // Procura o MovimentacaoPlataformaScript e reseta
+        for (const [tipo, comp] of this.entidade.componentes.entries()) {
+            if (comp.tipo === 'ScriptComponent' && comp.instance) {
+                const nome = comp.instance.constructor.name;
+                
+                if (nome === 'MovimentacaoPlataformaScript') {
+                    // Reseta estado de morte
+                    comp.instance._morto = false;
+                    comp.instance._tempoMorte = 0;
+                    comp.instance._deathScreenAtivado = false;
+                    console.log('✅ Estado de morte resetado!');
+                }
+            }
+        }
+        
+        // Restaura HP do jogador
+        if (this.entidade.hp !== undefined) {
+            this.entidade.hp = this.entidade.hpMax || 100;
+            console.log('❤️ HP restaurado:', this.entidade.hp);
+        }
+        
+        // Volta para animação idle
+        const sprite = this.entidade.obterComponente('SpriteComponent');
+        if (sprite) {
+            sprite.autoplayAnim = 'idle'; // Reativa autoplay
+            sprite.play('idle');
+            console.log('🎬 Voltou para animação idle');
+        }
+
         // Fecha dialog
         if (this.dialog) {
             this.dialog.close();
@@ -1855,6 +2026,421 @@ class CombateMeleeScript {
     }
 }`;
     }
-}
 
+    /**
+     * Gera script de Morte com Animação
+     */
+    gerarScriptMorteAnimacao() {
+        // Retorna o código completo inline (sem export)
+        return `class MorteAnimacao {
+    constructor(entidade) {
+        this.entidade = entidade;
+        
+        // Configurações
+        this.animNome = 'death';
+        this.duracaoMinima = 1.0;
+        this.congelarMovimento = true;
+        this.alturaQueda = 2000;
+        
+        // Estados internos
+        this.morto = false;
+        this.animacaoIniciada = false;
+        this.tempoMorte = 0;
+        this.fadeAtivado = false;
+        this.inicializado = false; // Flag de segurança
+        this.tempoInicializacao = 0; // Aguarda outros scripts configurarem
+        
+        console.log('💀 [MorteAnimacao] Script iniciado');
+    }
+
+    iniciar() {
+        this.scriptFade = this.encontrarScriptFade();
+        if (!this.scriptFade) {
+            console.warn('⚠️ [MorteAnimacao] Script MorteFade não encontrado!');
+        }
+        
+        console.log('💀 [MorteAnimacao] Aguardando 0.5s para inicializar...');
+    }
+
+    encontrarScriptFade() {
+        for (const comp of this.entidade.componentes.values()) {
+            if (comp.tipo === 'ScriptComponent' && comp.instance) {
+                const nome = comp.instance.constructor.name || '';
+                if (nome.toLowerCase().includes('mortefade') || 
+                    (nome.toLowerCase().includes('fade') && nome.toLowerCase().includes('morte'))) {
+                    return comp.instance;
+                }
+            }
+        }
+        return null;
+    }
+
+    verificarMorte() {
+        // NÃO verifica morte antes de inicializar
+        if (!this.inicializado) return false;
+        
+        // DEBUG: Mostra valores a cada 1 segundo (não todo frame)
+        if (!this.debugCooldown) this.debugCooldown = 0;
+        this.debugCooldown -= 0.016; // ~60fps
+        
+        if (this.debugCooldown <= 0) {
+            this.debugCooldown = 1.0; // 1 segundo
+            const debugHP = this.entidade.hp !== undefined ? this.entidade.hp : 'UNDEFINED';
+            const debugY = this.entidade.y;
+            const debugPosInicial = this.posicaoInicialY;
+            
+            console.log('🔍 [DEBUG] HP: ' + debugHP + ' | Y: ' + debugY + ' | Y Inicial: ' + debugPosInicial);
+        }
+        
+        // Condição 1: HP zerado (APENAS se HP EXISTIR e for <= 0)
+        if (this.entidade.hp !== undefined && this.entidade.hp !== null) {
+            if (this.entidade.hp <= 0) {
+                console.log('💀 MORTE DETECTADA: HP = 0');
+                return true;
+            }
+        }
+        
+        // Condição 2: Caiu do mapa
+        if (this.posicaoInicialY !== undefined) {
+            const distanciaQueda = this.entidade.y - this.posicaoInicialY;
+            if (distanciaQueda > this.alturaQueda) {
+                console.log('💀 MORTE DETECTADA: Caiu ' + distanciaQueda + 'px (limite: ' + this.alturaQueda + ')');
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    ativarMorte() {
+        if (this.morto) return;
+        
+        this.morto = true;
+        this.tempoMorte = 0;
+        
+        console.log('💀 [MorteAnimacao] Player morreu!');
+        
+        // DEBUG COMPLETO DO SPRITE
+        const sprite = this.entidade.obterComponente('SpriteComponent');
+        console.log('🔍 [DEBUG] SpriteComponent existe?', sprite !== null);
+        console.log('🔍 [DEBUG] sprite.animacoes:', sprite ? sprite.animacoes : 'SPRITE NULL');
+        console.log('🔍 [DEBUG] Animações disponíveis:', sprite && sprite.animacoes ? Object.keys(sprite.animacoes) : 'NENHUMA');
+        console.log('🔍 [DEBUG] Procurando por:', this.animNome);
+        
+        // 1. Tocar animação de morte FORÇADAMENTE
+        if (sprite && sprite.animacoes && sprite.animacoes[this.animNome]) {
+            console.log('💀 FORÇANDO animação manualmente!');
+            
+            // CRÍTICO: Desabilita autoplay para evitar que volte para idle
+            sprite.autoplayAnim = '';
+            
+            // Método 1: Usar play() normal
+            sprite.play(this.animNome);
+            
+            // Método 2: FORÇAR diretamente - USA A PROPRIEDADE CORRETA!
+            sprite.animacaoAtual = this.animNome;
+            sprite.indiceFrame = 0;  // ← PROPRIEDADE CORRETA!
+            sprite.tempoDecorrido = 0;  // ← TIMER CORRETO!
+            
+            console.log('💀 Forçado - animacaoAtual:', sprite.animacaoAtual, 'indiceFrame:', sprite.indiceFrame);
+            
+            // Desabilita loop da morte
+            if (sprite.animacoes[this.animNome].loop !== false) {
+                sprite.animacoes[this.animNome].loop = false;
+                console.log('💀 Loop de death desabilitado');
+            }
+            
+            this.animacaoIniciada = true;
+            console.log('✅ Animação forçada:', this.animNome);
+        } else {
+            console.error('❌ Animação death não encontrada!');
+        }
+        
+        // 2. Congelar movimento
+        if (this.congelarMovimento) {
+            this.entidade.velocidadeX = 0;
+            this.entidade.velocidadeY = 0;
+            if (this.entidade.temGravidade !== undefined) {
+                this.entidade.temGravidade = false;
+            }
+        }
+        
+        // 3. Desabilitar TODOS os scripts de movimento
+        for (const comp of this.entidade.componentes.values()) {
+            if (comp.tipo === 'ScriptComponent' && comp.instance && comp.instance !== this) {
+                const nome = comp.instance.constructor.name || '';
+                
+                // Desabilita QUALQUER script
+                comp.instance.desabilitado = true;
+                comp.instance.ativo = false;
+                
+                console.log('💀 Script desabilitado:', nome);
+            }
+        }
+    }
+
+    ativarFade() {
+        if (!this.scriptFade) return;
+        
+        console.log('💀 [MorteAnimacao] Ativando fade...');
+        
+        if (this.scriptFade.iniciar && typeof this.scriptFade.iniciar === 'function') {
+            this.scriptFade.iniciar();
+        }
+        if (this.scriptFade.ativar && typeof this.scriptFade.ativar === 'function') {
+            this.scriptFade.ativar();
+        }
+    }
+
+    atualizar(deltaTime) {
+        // Aguarda 0.5s antes de começar a verificar morte
+        if (!this.inicializado) {
+            // Captura Y inicial no primeiro frame
+            if (this.posicaoInicialY === undefined) {
+                this.posicaoInicialY = this.entidade.y;
+                console.log('💀 [MorteAnimacao] Y inicial capturado:', this.posicaoInicialY);
+            }
+            
+            this.tempoInicializacao += deltaTime;
+            if (this.tempoInicializacao >= 0.5) {
+                this.inicializado = true;
+                console.log('💀 [MorteAnimacao] Inicializado! Monitorando HP...');
+            }
+            return;
+        }
+        
+        if (!this.morto) {
+            if (this.verificarMorte()) {
+                this.ativarMorte();
+            }
+            return;
+        }
+        
+        // Player está morto - NÃO mexe mais na animação!
+        this.tempoMorte += deltaTime;
+        
+        // SpriteComponent atualiza sozinho - apenas monitora
+        const sprite = this.entidade.obterComponente('SpriteComponent');
+        
+        // DEBUG: Mostra info da animação a cada segundo
+        if (!this.debugAnimCooldown) this.debugAnimCooldown = 0;
+        this.debugAnimCooldown -= deltaTime;
+        
+        if (this.debugAnimCooldown <= 0 && sprite) {
+            this.debugAnimCooldown = 1.0;
+            const anim = sprite.animacoes ? sprite.animacoes[this.animNome] : null;
+            const numFrames = anim && anim.frames ? anim.frames.length : 0;
+            console.log('🎬 Animação death - indiceFrame:', sprite.indiceFrame, 
+                       '/', numFrames, 'frames | Speed:', anim ? anim.speed : 'N/A');
+        }
+        
+        if (this.congelarMovimento) {
+            this.entidade.velocidadeX = 0;
+            this.entidade.velocidadeY = 0;
+        }
+        
+        if (this.tempoMorte >= this.duracaoMinima && !this.fadeAtivado) {
+            this.fadeAtivado = true;
+            this.ativarFade();
+        }
+    }
+
+    processarInput(engine) {
+        // Bloqueia inputs durante morte
+    }
+
+    estaOcupado() {
+        return this.morto;
+    }
+}`;
+    }
+
+    /**
+     * Gera script Simulador de Morte (DEBUG)
+     */
+    gerarScriptSimuladorMorte() {
+        return `class SimuladorMorte {
+    constructor(entidade) {
+        this.entidade = entidade;
+        this.teclaAtivacao = 'k';
+        this.tipoMorte = 'hp';
+        console.log('🔧 [SimuladorMorte] Pressione K para matar player');
+    }
+
+    simularMorte() {
+        console.log('💀 [SimuladorMorte] SIMULANDO MORTE...');
+        
+        switch (this.tipoMorte) {
+            case 'hp':
+                const hpOriginal = this.entidade.hp || 0;
+                this.entidade.hp = 0;
+                console.log(\`   HP: \${hpOriginal} → 0\`);
+                break;
+            
+            case 'queda':
+                this.entidade.y = 3000;
+                console.log('   Teleportado para Y=3000');
+                break;
+            
+            case 'ambos':
+                this.entidade.hp = 0;
+                this.entidade.y = 3000;
+                console.log('   HP zerado + Queda');
+                break;
+        }
+    }
+
+    processarInput(engine) {
+        if (engine.teclaPrecionadaAgora(this.teclaAtivacao)) {
+            this.simularMorte();
+        }
+    }
+
+    atualizar(deltaTime) {
+        // Nada
+    }
+}`;
+    }
+
+    /**
+     * Gera script de Stats RPG
+     */
+    gerarScriptStatsRPG() {
+        return `class StatsRPG {
+    constructor(entidade) {
+        this.entidade = entidade;
+        
+        // Configurações
+        this.hpMax = 100;
+        this.manaMax = 50;
+        this.regeneracaoHP = 0;
+        this.regeneracaoMana = 5;
+        this.usarLevel = true;
+        this.levelInicial = 1;
+        this.xpParaProximoLevel = 100;
+        this.multiplicadorXP = 1.5;
+        this.forca = 10;
+        this.defesa = 5;
+        
+        // INICIALIZA HP IMEDIATAMENTE no construtor
+        this.entidade.hp = this.hpMax;
+        this.entidade.hpMax = this.hpMax;
+        this.entidade.mana = this.manaMax;
+        this.entidade.manaMax = this.manaMax;
+        
+        console.log('⭐ [StatsRPG] Constructor - HP definido:', this.entidade.hp);
+    }
+
+    iniciar() {
+        // Já foi definido no constructor, mas pode redefinir aqui também
+        this.entidade.hp = this.hpMax;
+        this.entidade.hpMax = this.hpMax;
+        this.entidade.mana = this.manaMax;
+        this.entidade.manaMax = this.manaMax;
+        
+        if (this.usarLevel) {
+            this.entidade.level = this.levelInicial;
+            this.entidade.xp = 0;
+            this.entidade.xpProximo = this.xpParaProximoLevel;
+        }
+        
+        this.entidade.forca = this.forca;
+        this.entidade.defesa = this.defesa;
+        
+        console.log('⭐ [StatsRPG] iniciar() - HP:', this.entidade.hp, '| Mana:', this.entidade.mana, '| Level:', this.entidade.level);
+    }
+
+    receberDano(quantidade) {
+        const reducao = Math.min(this.entidade.defesa * 0.01, 0.75);
+        const danoFinal = Math.floor(quantidade * (1 - reducao));
+        
+        this.entidade.hp -= danoFinal;
+        if (this.entidade.hp < 0) this.entidade.hp = 0;
+        
+        console.log(\`💥 Dano: -\${danoFinal} HP | HP Restante: \${this.entidade.hp}/\${this.entidade.hpMax}\`);
+        
+        return danoFinal;
+    }
+
+    curar(quantidade) {
+        const hpAntes = this.entidade.hp;
+        this.entidade.hp = Math.min(this.entidade.hp + quantidade, this.entidade.hpMax);
+        const curado = this.entidade.hp - hpAntes;
+        
+        if (curado > 0) {
+            console.log(\`💚 Cura: +\${curado} HP\`);
+        }
+        
+        return curado;
+    }
+
+    gastarMana(quantidade) {
+        if (this.entidade.mana >= quantidade) {
+            this.entidade.mana -= quantidade;
+            return true;
+        }
+        return false;
+    }
+
+    restaurarMana(quantidade) {
+        const manaAntes = this.entidade.mana;
+        this.entidade.mana = Math.min(this.entidade.mana + quantidade, this.entidade.manaMax);
+        return this.entidade.mana - manaAntes;
+    }
+
+    ganharXP(quantidade) {
+        if (!this.usarLevel) return;
+        
+        this.entidade.xp += quantidade;
+        console.log(\`✨ XP: +\${quantidade} (\${this.entidade.xp}/\${this.entidade.xpProximo})\`);
+        
+        while (this.entidade.xp >= this.entidade.xpProximo) {
+            this.levelUp();
+        }
+    }
+
+    levelUp() {
+        this.entidade.xp -= this.entidade.xpProximo;
+        this.entidade.level++;
+        
+        this.entidade.xpProximo = Math.floor(this.xpParaProximoLevel * Math.pow(this.multiplicadorXP, this.entidade.level - 1));
+        
+        this.entidade.hpMax += 10;
+        this.entidade.hp = this.entidade.hpMax;
+        this.entidade.manaMax += 5;
+        this.entidade.mana = this.entidade.manaMax;
+        this.entidade.forca += 2;
+        this.entidade.defesa += 1;
+        
+        console.log(\`🎉 LEVEL UP! → Level \${this.entidade.level}\`);
+        console.log(\`   HP Max: \${this.entidade.hpMax} | Força: \${this.entidade.forca} | Defesa: \${this.entidade.defesa}\`);
+    }
+
+    atualizar(deltaTime) {
+        // Regeneração HP
+        if (this.regeneracaoHP > 0 && this.entidade.hp < this.entidade.hpMax) {
+            this.entidade.hp = Math.min(this.entidade.hp + (this.regeneracaoHP * deltaTime), this.entidade.hpMax);
+        }
+        
+        // Regeneração Mana
+        if (this.regeneracaoMana > 0 && this.entidade.mana < this.entidade.manaMax) {
+            this.entidade.mana = Math.min(this.entidade.mana + (this.regeneracaoMana * deltaTime), this.entidade.manaMax);
+        }
+    }
+
+    processarInput(engine) {
+        // Debug: Pressione H para ganhar HP, M para mana, X para XP
+        if (engine.teclaPrecionadaAgora('h')) {
+            this.curar(20);
+        }
+        if (engine.teclaPrecionadaAgora('m')) {
+            this.restaurarMana(10);
+        }
+        if (engine.teclaPrecionadaAgora('x')) {
+            this.ganharXP(50);
+        }
+    }
+}`;
+    }
+}
 export default GeradorScript;
