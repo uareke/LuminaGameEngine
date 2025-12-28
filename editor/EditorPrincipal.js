@@ -1847,6 +1847,25 @@ class EditorPrincipal {
                     }
                     spriteHtml += `</div></div>`;
                 }
+            } else {
+                // Sem asset selecionado - mostra animações padrão sugeridas
+                spriteHtml += `<div style="background:#222; padding:5px; border-radius:4px; margin-bottom:5px;">`;
+                spriteHtml += `<div style="font-size:10px; color:#aaa; margin-bottom:5px;">💡 Standard Animations (Configure depois de adicionar Asset):</div>`;
+                spriteHtml += `<div style="display:flex; flex-wrap:wrap; gap:5px;">`;
+
+                // Animações padrão esperadas pelos scripts
+                const animacoesPadrao = [
+                    'idle', 'walk', 'run', 'jump', 'fall',
+                    'crouch', 'crouchWalk', 'slide',
+                    'attack', 'wallSlide'
+                ];
+
+                for (const nome of animacoesPadrao) {
+                    spriteHtml += `<div style="background:#333; color:#888; padding:2px 6px; border-radius:10px; font-size:10px; border:1px dashed #555;">${nome}</div>`;
+                }
+                spriteHtml += `</div>`;
+                spriteHtml += `<div style="font-size:9px; color:#666; margin-top:5px; font-style:italic;">Adicione um Asset de Sprite para configurar animações</div>`;
+                spriteHtml += `</div>`;
             }
 
             spriteHtml += `
@@ -3235,7 +3254,9 @@ class EditorPrincipal {
                 { id: 'ScriptComponent_Basic', nome: t('comp.rpgTopDown'), icon: '🎮', unico: false },
                 { id: 'ScriptComponent_Platform', nome: t('comp.platformer'), icon: '🏃', unico: false },
                 { id: 'ScriptComponent_Patrol', nome: t('comp.aiPatrol'), icon: '🤖', unico: false },
+                { id: 'ScriptComponent_StatsRPG', nome: 'Stats RPG', icon: '⭐', unico: false },
                 { id: 'ScriptComponent_Death', nome: t('comp.deathFade'), icon: '🎞️', unico: false },
+                { id: 'ScriptComponent_DeathSimulator', nome: 'Morte (Simulador)', icon: '🔧', unico: false },
                 { id: 'ScriptComponent_Interaction', nome: t('comp.interaction'), icon: '💬', unico: false },
                 { id: 'ScriptComponent_Melee', nome: t('comp.meleeCombat'), icon: '⚔️', unico: false },
                 { id: 'ScriptComponent_Respawn', nome: t('comp.respawn'), icon: '👻', unico: false }
@@ -3431,8 +3452,14 @@ class EditorPrincipal {
                     this.adicionarScript(ent, 'plataforma');
                 } else if (tipo === 'ScriptComponent_Patrol') {
                     this.adicionarScript(ent, 'patrulha');
+                } else if (tipo === 'ScriptComponent_StatsRPG') {
+                    this.adicionarScript(ent, 'statsRPG');
                 } else if (tipo === 'ScriptComponent_Death') {
                     this.adicionarScript(ent, 'morte');
+                } else if (tipo === 'ScriptComponent_DeathAnim') {
+                    this.adicionarScript(ent, 'morteAnimacao');
+                } else if (tipo === 'ScriptComponent_DeathSimulator') {
+                    this.adicionarScript(ent, 'simuladorMorte');
                 } else if (tipo === 'ScriptComponent_FloatingText') {
                     this.adicionarScript(ent, 'textoFlutuante');
                 } else if (tipo === 'ScriptComponent_Interaction') {
@@ -3898,6 +3925,8 @@ class EditorPrincipal {
                     <option value="ataqueMelee">Combate Melee (Ataque)</option>
                     <option value="respawn">Sistema de Respawn (Inimigo)</option>
                     <option value="morte">Efeito de Morte (Fade)</option>
+                    <option value="morteAnimacao">💀 Morte com Animação</option>
+                    <option value="simuladorMorte">🔧 Simulador de Morte (DEBUG)</option>
                     <option value="textoFlutuante">Plugin: Texto Flutuante</option>
                     <option value="interacao">Sistema de Interação (NPC/Placa)</option>
                     <option value="vazio">Script Vazio</option>
@@ -3946,9 +3975,18 @@ class EditorPrincipal {
                 estados: ['patrulhando']
             };
             codigo = gerador.gerarIAInimigoPatrulha(info);
+        } else if (tipo === 'statsRPG') {
+            scriptComp.nome = 'Stats RPG';
+            codigo = gerador.gerarScriptStatsRPG();
         } else if (tipo === 'morte') {
             scriptComp.nome = 'Sistema de Morte';
             codigo = gerador.gerarScriptMorte();
+        } else if (tipo === 'morteAnimacao') {
+            scriptComp.nome = 'Morte com Animação';
+            codigo = gerador.gerarScriptMorteAnimacao();
+        } else if (tipo === 'simuladorMorte') {
+            scriptComp.nome = 'Simulador de Morte';
+            codigo = gerador.gerarScriptSimuladorMorte();
         } else if (tipo === 'ataqueMelee') {
             scriptComp.nome = 'Combate Melee';
             codigo = gerador.gerarScriptAtaqueMelee();
