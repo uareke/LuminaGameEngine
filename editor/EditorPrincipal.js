@@ -218,8 +218,8 @@ class EditorPrincipal {
             divScale.style.gap = '5px';
 
             divScale.innerHTML = `
-                <span style="color:#aaa; font-size:12px;">🎮 Scale:</span>
-                <input type="number" id="inp-game-scale" value="1.0" step="0.1" min="0.1" max="5.0" style="width:50px; background:#222; border:1px solid #444; color:white; padding:2px; text-align:center;">
+                <span style="color:#fff; font-size:12px;">Scale:</span>
+                <input type="number" id="inp-game-scale" value="1.0" step="0.1" min="0.1" max="5.0" style="width:50px; background:#1a1a2e; border:1px solid #444; color:white; padding:2px; text-align:center;">
              `;
 
             toolbarTop.insertBefore(divScale, btnPlay);
@@ -1526,7 +1526,8 @@ class EditorPrincipal {
         const btnAddSub = document.createElement('span');
         btnAddSub.innerText = '+';
         btnAddSub.title = 'Criar Subpasta';
-        btnAddSub.style.fontSize = '12px';
+        btnAddSub.style.fontSize = '18px';
+        
         btnAddSub.style.color = '#4ecdc4';
         btnAddSub.onclick = (e) => {
             e.stopPropagation();
@@ -1541,7 +1542,7 @@ class EditorPrincipal {
         const btnDel = document.createElement('span');
         btnDel.innerText = 'x';
         btnDel.title = 'Apagar Pasta';
-        btnDel.style.fontSize = '10px';
+        btnDel.style.fontSize = '16px';
         btnDel.style.color = '#ff4444';
         btnDel.style.marginLeft = '5px';
         btnDel.onclick = (e) => {

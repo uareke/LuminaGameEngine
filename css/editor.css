@@ -86,8 +86,7 @@ body {
 .toolbar-group {
     display: flex;
     gap: 8px;
-    margin-right: 16px;
-    padding-right: 16px;
+    padding-right: 8px;
     border-right: 1px solid #333;
 }
 
@@ -96,8 +95,8 @@ body {
     border: none;
 }
 
-.btn-tool,
 .btn-play,
+.btn-tool,
 .btn-pause,
 .btn-stop,
 .btn-save,
@@ -296,7 +295,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(0, 0, 0, 0.3);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -306,9 +305,8 @@ body {
 .modal-content {
     background: #1a1a2e;
     width: 400px;
-    border: 1px solid #4ecdc4;
+    border: 3px solid #666;
     border-radius: 8px;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
     display: flex;
     flex-direction: column;
 }
@@ -385,12 +383,22 @@ body {
 
 .btn-settings {
     background: transparent;
-    border: 1px solid #4ecdc4;
+    border: 1px solid #444;
     color: #4ecdc4;
     padding: 6px 12px;
     border-radius: 4px;
     cursor: pointer;
+
+    display: flex;
+    align-items: center; 
+    justify-content: center;
 }
+
+.btn-settings img {
+    width: 14px;
+    height: 14px;
+}
+
 
 /* =========================================
    EDITOR DE SPRITES
@@ -579,7 +587,7 @@ body {
    RESIZERS DO PAINEL
    ========================================= */
 .resizer-vertical {
-    width: 6px;
+    width: 1px;
     background: #0f0f1e;
     border-left: 1px solid #1a1a2e;
     border-right: 1px solid #1a1a2e;

@@ -20,12 +20,12 @@ class LanguageManager {
             'pt-BR': {
                 name: 'Português',
                 nativeName: 'Português (Brasil)',
-                flag: '🇧🇷'
+                flag: '(BR)'
             },
             'en': {
                 name: 'English',
                 nativeName: 'English',
-                flag: '🇺🇸'
+                flag: '(US)'
             }
         };
 
