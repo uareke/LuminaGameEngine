@@ -16,8 +16,7 @@
         <!-- Toolbar Superior -->
         <div class="toolbar">
             <div class="toolbar-logo">
-                <span>🎮</span>
-                <span>Game Engine Editor</span>
+                <span>🎮 Game Engine Editor</span>
             </div>
 
             <!-- Grupo: Ferramentas de Criação -->
@@ -65,9 +64,6 @@
                     title="Configurações da Cena (Cor de Fundo)"><span data-i18n="panel.scene">Cena</span></button>
                 <button class="btn-settings" id="btn-settings" title="Configurações">⚙️</button>
             </div>
-
-            <!-- Seletor de Idioma -->
-            <div id="language-selector-container"></div>
         </div>
 
         <!-- Modal de Configurações -->
@@ -78,6 +74,12 @@
                     <button class="btn-close-modal" id="btn-close-settings">✖</button>
                 </div>
                 <div class="modal-body">
+                    <!-- Seletor de Idioma -->
+                     <div class="form-group">
+                        <label>Language</label>
+                         <div id="language-selector-container"></div>
+                     </div>
+                    
                     <div class="form-group">
                         <label>Tamanho da Grid (px)</label>
                         <input type="number" id="conf-grid-size" value="50" min="8" max="128" step="8">

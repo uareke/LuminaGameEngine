@@ -6,7 +6,7 @@
 }
 
 .language-select {
-    background: #1a1a1a;
+    background: #0f0f1e;
     color: #ffffff;
     border: 1px solid #444;
     border-radius: 4px;
@@ -20,32 +20,13 @@
 }
 
 .language-select:hover {
-    background: #252525;
     border-color: #666;
 }
 
-.language-select:focus {
-    border-color: #4a9eff;
-    box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
-}
-
 .language-select option {
-    background: #1a1a1a;
-    color: #ffffff;
+    background: #0f0f1e;
+    color: white;
     padding: 8px;
-}
-
-/* Integração com a toolbar do editor */
-#language-selector-container {
-    display: inline-flex;
-    align-items: center;
-    margin-left: auto;
-    padding: 0 15px;
-}
-
-/* Estilo compacto para a toolbar */
-.toolbar #language-selector-container {
-    margin: 0 5px;
 }
 
 .toolbar .language-select {
