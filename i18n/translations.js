@@ -14,7 +14,6 @@ const translations = {
         'menu.export': 'Exportar',
 
         // Toolbar
-        'toolbar.play': 'Jogar',
         'toolbar.pause': 'Pausar',
         'toolbar.stop': 'Parar',
         'toolbar.grid': 'Grade',
@@ -217,7 +216,6 @@ const translations = {
         'menu.export': 'Export',
 
         // Toolbar
-        'toolbar.play': 'Play',
         'toolbar.pause': 'Pause',
         'toolbar.stop': 'Stop',
         'toolbar.grid': 'Grid',
