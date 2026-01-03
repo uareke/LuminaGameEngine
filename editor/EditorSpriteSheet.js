@@ -72,6 +72,7 @@ export class EditorSpriteSheet {
         inputFile.onchange = (e) => {
             const file = e.target.files[0];
             if (file) this.carregarImagem(file);
+            inputFile.value = '';
         };
 
         // Drag Drop

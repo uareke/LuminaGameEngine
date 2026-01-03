@@ -18,6 +18,7 @@ import DialogueComponent from '../componentes/DialogueComponent.js';
 import KillZoneComponent from '../componentes/KillZoneComponent.js';
 import CheckpointComponent from '../componentes/CheckpointComponent.js';
 import { ParticleEmitterComponent } from '../componentes/ParticleEmitterComponent.js';
+import UIComponent from '../componentes/UIComponent.js';
 import GeradorScript from '../movimentacao/GeradorScript.js';
 import { EditorSpriteSheet } from './EditorSpriteSheet.js';
 import { EditorAnimation } from './EditorAnimation.js';
@@ -437,6 +438,35 @@ class EditorPrincipal {
         document.getElementById('btn-toggle-console')?.addEventListener('click', () => {
             document.getElementById('painel-console')?.classList.toggle('collapsed');
         });
+
+        // INJETAR BOTÃO HUD (Global)
+        const btnSettingsRef = document.getElementById('btn-settings');
+        const parentToolbar = btnSettingsRef ? btnSettingsRef.parentElement : document.querySelector('.navbar-right') || document.body;
+
+        if (!document.getElementById('btn-open-global-hud')) {
+            const btnHud = document.createElement('button');
+            btnHud.id = 'btn-open-global-hud';
+            btnHud.className = 'btn-toolbar'; // Assume classe do bootstrap ou theme
+            btnHud.title = 'Configurar HUD Global';
+            btnHud.innerHTML = '🖥️ HUD';
+            btnHud.style.cssText = `
+                margin-right: 5px; padding: 5px 10px; background: #2c3e50; 
+                border: 1px solid #34495e; color: #ecf0f1; border-radius: 4px; cursor: pointer;
+            `;
+
+            btnHud.onclick = () => this.abrirEditorHUD();
+
+            if (btnSettingsRef && btnSettingsRef.parentElement) {
+                btnSettingsRef.parentElement.insertBefore(btnHud, btnSettingsRef);
+            } else {
+                // Fallback: prepend no body se não achar nada
+                document.body.appendChild(btnHud);
+                btnHud.style.position = 'fixed';
+                btnHud.style.top = '5px';
+                btnHud.style.right = '200px';
+                btnHud.style.zIndex = 1000;
+            }
+        }
     }
 
     /**
@@ -716,6 +746,27 @@ class EditorPrincipal {
             btnStop?.classList.add('hidden');
             if (modoAtual) modoAtual.textContent = 'Edição';
 
+            // Re-exibir barra de status
+            if (this.statusBarRef) {
+                this.statusBarRef.style.display = this.statusBarRef.dataset.originalDisplay || '';
+            } else {
+                // Fallback se não tiver ref guardada
+                const contador = document.getElementById('entidades-count');
+                if (contador) {
+                    let current = contador.parentElement;
+                    while (current && current.tagName !== 'BODY') {
+                        if (current.style.display === 'none') {
+                            const style = window.getComputedStyle(current);
+                            if (style.position === 'fixed' || style.position === 'absolute') {
+                                current.style.display = ''; // Força mostrar
+                                break;
+                            }
+                        }
+                        current = current.parentElement;
+                    }
+                }
+            }
+
             this.engine.simulado = false; // Pausa física
 
             // Restaurar estado inicial
@@ -731,6 +782,45 @@ class EditorPrincipal {
             }
         } else {
             // -- INDO PARA MODO TESTE (PLAY) --
+
+            // Esconder barra de status (Estratégia Sniper: Busca por posição e conteúdo)
+            const allElements = document.querySelectorAll('div');
+            let statusBarFound = null;
+
+            // Tentativa 1: Busca simples por ID conhecido e sobe a hierarquia
+            const contador = document.getElementById('entidades-count');
+            if (contador) {
+                // Tenta achar o container fixo pai
+                let current = contador.parentElement;
+                while (current && current.tagName !== 'BODY') {
+                    const style = window.getComputedStyle(current);
+                    if (style.position === 'fixed' || style.position === 'absolute' || current.classList.contains('status-bar')) {
+                        statusBarFound = current;
+                        break;
+                    }
+                    current = current.parentElement;
+                }
+            }
+
+            // Tentativa 2: Se falhar, busca por características visuais (Backup garantido)
+            if (!statusBarFound) {
+                statusBarFound = Array.from(allElements).find(el => {
+                    if (!el.textContent.includes('FPS') || !el.textContent.includes('Entidades')) return false;
+                    const style = window.getComputedStyle(el);
+                    return (style.position === 'fixed' || style.position === 'absolute')
+                        && (parseInt(style.top) < 100 || style.top === 'auto') // Topo
+                        && (parseInt(style.left) < 100 || style.left === 'auto'); // Esquerda
+                });
+            }
+
+            // Esconder se achou
+            if (statusBarFound) {
+                if (!statusBarFound.dataset.originalDisplay) {
+                    statusBarFound.dataset.originalDisplay = statusBarFound.style.display || '';
+                }
+                statusBarFound.style.display = 'none';
+                this.statusBarRef = statusBarFound; // Guardar referência para restaurar rápido
+            }
 
             // Salvar estado inicial ANTES de começar a física
             this.salvarEstadoInicial();
@@ -859,10 +949,13 @@ class EditorPrincipal {
 
         // Calcular Grid Relativo
         const size = tileComp.tileSize || 32;
+        const scale = tileComp.scale || 1.0; // Pegar escala
+        const gridSize = size * scale;       // Tamanho efetivo no mundo
+
         const localX = worldX - tilemapEnt.x;
         const localY = worldY - tilemapEnt.y;
-        const gridX = Math.floor(localX / size);
-        const gridY = Math.floor(localY / size);
+        const gridX = Math.floor(localX / gridSize); // Usa tamanho escalado
+        const gridY = Math.floor(localY / gridSize);
 
         // --- SOLIDIFIER TOOL LOGIC (TOGGLE) ---
         if (this.ferramentaAtiva === 'solidify') {
@@ -926,7 +1019,23 @@ class EditorPrincipal {
             // Single Tile Paint or Eraser (this.tileData is null)
             if (this.tileData) {
                 // Pintar uníco (mas garantindo source rect se tiver vindo do palette selection simples)
-                tileComp.setTile(gridX, gridY, this.tileData);
+
+                // MISTURAR DADOS DOS CHECKBOXES DA UI
+                // Isso permite definir propriedades de gameplay independentes da imagem
+                const chkSolid = document.getElementById('chk-tile-solid');
+                const chkPlataforma = document.getElementById('chk-tile-plataforma');
+                const chkWall = document.getElementById('chk-tile-isWall');
+                const chkGround = document.getElementById('chk-tile-isGround');
+
+                const mixData = { ...this.tileData };
+
+                // Se o checkbox existir, usa o valor dele (override), senão mantém o do tileData ou default false
+                if (chkSolid) mixData.solid = chkSolid.checked;
+                if (chkPlataforma) mixData.plataforma = chkPlataforma.checked;
+                if (chkWall) mixData.wall = chkWall.checked;
+                if (chkGround) mixData.ground = chkGround.checked;
+
+                tileComp.setTile(gridX, gridY, mixData);
             } else {
                 // Eraser
                 tileComp.setTile(gridX, gridY, null);
@@ -1231,7 +1340,7 @@ class EditorPrincipal {
                 renderizador.assetManager = this.assetManager;
             }
             // Injetar flag de debug (Gizmos)
-            renderizador.debugMode = this.config.showGizmos;
+            renderizador.debugMode = this.modoEdicao && this.config.showGizmos;
         }
 
         // Limpar canvas
@@ -1527,7 +1636,7 @@ class EditorPrincipal {
         btnAddSub.innerText = '+';
         btnAddSub.title = 'Criar Subpasta';
         btnAddSub.style.fontSize = '18px';
-        
+
         btnAddSub.style.color = '#4ecdc4';
         btnAddSub.onclick = (e) => {
             e.stopPropagation();
@@ -1888,6 +1997,13 @@ class EditorPrincipal {
                         <label style="font-size:10px; color:#aaa;">Scale Y</label>
                         <input type="number" id="prop-scale-y" value="${spriteComp.scaleY || 1.0}" step="0.1" style="width:100%; background:#111; color:white; border:1px solid #444;">
                     </div>
+                </div>
+                <div style="margin-top: 5px; padding-top: 5px; border-top: 1px dashed #444;">
+                    <label style="font-size:11px; display:flex; align-items:center; gap:5px; color:#ddd;">
+                        <input type="checkbox" id="prop-tiled" ${spriteComp.tiled ? 'checked' : ''}>
+                        Repetir (Tiled Mode)
+                    </label>
+                    <div style="font-size:9px; color:#666; margin-left: 18px;">Repete a imagem lado a lado. Ideal para Chao/Lava.</div>
                 </div>`;
 
             componentsHtml += createComponentHtml('SpriteComponent', 'Sprite Renderer', '🖼️', '#e67e22', spriteHtml, true);
@@ -2005,6 +2121,10 @@ class EditorPrincipal {
                          <input type="number" value="${tileComp.tileSize}" class="plugin-prop" data-plugin="TilemapComponent" data-prop="tileSize" style="width:60px; background:#111; color:white; border:1px solid #444; padding:2px;">
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center;">
+                         <label style="font-size:11px; color:#aaa;">Scale</label>
+                         <input type="number" value="${tileComp.scale !== undefined ? tileComp.scale : 1.0}" step="0.1" class="plugin-prop" data-plugin="TilemapComponent" data-prop="scale" style="width:60px; background:#111; color:white; border:1px solid #444; padding:2px;">
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
                          <label style="font-size:11px; color:#aaa;">Active</label>
                          <input type="checkbox" ${tileComp.ativo ? 'checked' : ''} class="plugin-prop-check" data-plugin="TilemapComponent" data-prop="ativo">
                     </div>
@@ -2015,12 +2135,18 @@ class EditorPrincipal {
                         <button class="btn-tool-tile" data-tool="eraser" style="flex:1; background:#333; border:none; color:white; font-size:10px; padding:4px; cursor:pointer;" title="Borracha">🧼</button>
                     </div>
                     
-                    <div style="margin-top:5px; display:flex; align-items:center; gap: 10px;">
+                    <div style="margin-top:5px; display:flex; flex-wrap:wrap; gap: 10px;">
                         <label style="font-size:11px; color:#ddd; display:flex; align-items:center; cursor:pointer;">
                             <input type="checkbox" id="chk-tile-solid" style="margin-right:4px;"> Sólido
                         </label>
                          <label style="font-size:11px; color:#ddd; display:flex; align-items:center; cursor:pointer;" title="Permite pular de baixo para cima">
-                            <input type="checkbox" id="chk-tile-plataforma" style="margin-right:4px;"> Plataforma (One-Way)
+                            <input type="checkbox" id="chk-tile-plataforma" style="margin-right:4px;"> Plataforma
+                        </label>
+                        <label style="font-size:11px; color:#ff7675; display:flex; align-items:center; cursor:pointer;" title="Permite Wall Slide/Wall Jump">
+                            <input type="checkbox" id="chk-tile-isWall" style="margin-right:4px;"> 🧗 Parede (Slide)
+                        </label>
+                        <label style="font-size:11px; color:#55efc4; display:flex; align-items:center; cursor:pointer;" title="Chão Seguro (Sem Slide)">
+                            <input type="checkbox" id="chk-tile-isGround" style="margin-right:4px;"> 🦶 Chão
                         </label>
                     </div>
 
@@ -2389,6 +2515,32 @@ class EditorPrincipal {
             componentsHtml += createComponentHtml('ParticleEmitterComponent', 'Sistema de Partículas', '✨', '#e74c3c', particleHtml, true);
         }
 
+        // 2.13 UIComponent
+        const uiRef = ent.obterComponente('UIComponent');
+        if (uiRef) {
+            let uiHtml = `
+             <div style="background:#222; padding:10px; border-radius:4px;">
+                <div style="margin-bottom:10px;">
+                    <label style="font-size:10px; color:#aaa; margin-bottom:5px; display:block;">Modo de Renderização</label>
+                    <select id="prop-ui-mode" style="width:100%; background:#333; color:white; border:none; padding:5px; font-size:11px;">
+                        <option value="world" ${uiRef.renderMode === 'world' ? 'selected' : ''}>World Space (Flutuante)</option>
+                        <option value="screen" ${uiRef.renderMode === 'screen' ? 'selected' : ''}>Screen Space (HUD)</option>
+                    </select>
+                </div>
+                
+                <div style="background:#1a1a2e; padding:10px; border-radius:4px; margin-bottom:10px; border:1px dashed #444;">
+                    <div style="font-size:10px; color:#aaa; margin-bottom:5px;">Elementos Ativos:</div>
+                    <div style="font-weight:bold; color:#4ecdc4;">${uiRef.elementos.length} Elementos</div>
+                </div>
+
+                <button id="btn-open-ui-builder" style="width:100%; background:linear-gradient(45deg, #e74c3c, #c0392b); color:white; border:none; padding:8px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:11px;">
+                    🛠️ Abrir UI Builder
+                </button>
+             </div>`;
+
+            componentsHtml += createComponentHtml('UIComponent', 'UI / HUD', '❤️', '#ff6b6b', uiHtml, true);
+        }
+
         // 2.6 Scripts Loop
         // Fix: Usar entries() para pegar o ID correto (chave do mapa)
         for (const [key, script] of ent.componentes.entries()) {
@@ -2414,7 +2566,9 @@ class EditorPrincipal {
             // Vou chamar uma função auxiliar para renderizar os campos do script.
             scriptHtml += this.renderizarCamposScript(script, key);
 
-            componentsHtml += createComponentHtml(key, script.nome || 'Script Custom', '📜', '#f1c40f', scriptHtml, true);
+            // FIX: Usar scriptName (nome da classe) em vez de nome (tipo do componente)
+            const displayName = script.scriptName || script.nome || 'Script Custom';
+            componentsHtml += createComponentHtml(key, displayName, '📜', '#f1c40f', scriptHtml, true);
         }
 
 
@@ -2760,6 +2914,15 @@ class EditorPrincipal {
             });
         }
         bindScale('x'); bindScale('y');
+
+        // Listeners Tiled (Sprite)
+        document.getElementById('prop-tiled')?.addEventListener('change', (e) => {
+            const sprite = ent.obterComponente('SpriteComponent');
+            if (sprite) {
+                sprite.tiled = e.target.checked;
+                // Força atualização visual imediata se necessário
+            }
+        });
 
         // Script Props Edit
         document.querySelectorAll('.script-prop-input').forEach(input => {
@@ -3223,11 +3386,314 @@ class EditorPrincipal {
         // Tempo de Vida
         setupParticleSlider('particle-vida-min', 'tempoVidaMin', 'particle-vida-min-val', 's');
         setupParticleSlider('particle-vida-max', 'tempoVidaMax', 'particle-vida-max-val', 's');
+
+        // UI Component Listeners
+        document.getElementById('prop-ui-mode')?.addEventListener('change', (e) => {
+            const ui = ent.obterComponente('UIComponent');
+            if (ui) ui.renderMode = e.target.value;
+        });
+
+        document.getElementById('btn-open-ui-builder')?.addEventListener('click', () => {
+            const ui = ent.obterComponente('UIComponent');
+            if (ui) this.abrirUIBuilder(ui);
+        });
     }
 
     /**
-    * Abre menu/modal para escolher novo componente
-    */
+     * UI Builder - Modal rico para configurar HUDs
+     */
+    abrirUIBuilder(uiComponent) {
+        // Criar Modal
+        const modal = document.createElement('div');
+        modal.id = 'modal-ui-builder';
+        modal.style.cssText = `
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 900px; height: 700px; background: #1a1a2e; border: 2px solid #ff6b6b;
+            box-shadow: 0 0 50px rgba(255, 107, 107, 0.2); z-index: 3000; border-radius: 8px;
+            display: flex; flex-direction: column; overflow: hidden;
+        `;
+
+        const header = `
+            <div style="padding:15px; background:#2c1e2e; border-bottom:1px solid #ff6b6b; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; color:#ff6b6b;">❤️ UI Builder</h3>
+                <button id="btn-close-ui" style="background:none; border:none; color:#ff6b6b; cursor:pointer; font-size:16px;">✖</button>
+            </div>
+        `;
+
+        // Corpo dividido
+        const bodyKey = `
+            <div style="flex:1; display:flex;">
+                <!-- Sidebar Esquerda -->
+                <div style="width:250px; background:#222; border-right:1px solid #444; display:flex; flex-direction:column;">
+                    <button id="btn-add-element" style="margin:10px; padding:8px; background:#4ecdc4; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">+ Novo Elemento</button>
+                    <div id="ui-elements-list" style="flex:1; overflow-y:auto; padding:5px;"></div>
+                </div>
+
+                <!-- Painel Principal -->
+                <div style="flex:1; padding:20px; background:#1a1a2e; overflow-y:auto;">
+                    <div id="ui-element-config" style="display:none;">
+                        <input type="hidden" id="edit-element-id">
+                        
+                        <h4 style="color:#aaa; border-bottom:1px solid #444; padding-bottom:5px; margin-top:0;">Configuração</h4>
+                        
+                        <!-- Tipo -->
+                        <div style="margin-bottom:15px; background:#252535; padding:10px; border-radius:4px;">
+                            <label style="display:block; color:#888; font-size:12px; margin-bottom:5px;">Tipo de Elemento</label>
+                            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                                <label class="ui-type-opt"><input type="radio" name="el-type" value="barra"> Barra</label>
+                                <label class="ui-type-opt"><input type="radio" name="el-type" value="icones"> Ícones</label>
+                                <label class="ui-type-opt"><input type="radio" name="el-type" value="imagem"> Imagem</label>
+                                <label class="ui-type-opt"><input type="radio" name="el-type" value="texto"> Texto</label>
+                            </div>
+                        </div>
+
+                        <!-- Data Binding -->
+                        <div style="margin-bottom:15px; display:flex; gap:10px;">
+                            <div style="flex:1;">
+                                <label style="display:block; color:#4ecdc4; font-size:10px;">Variável Atual</label>
+                                <input type="text" id="el-target" placeholder="ex: hp" style="width:100%; background:#111; border:1px solid #444; color:white; padding:5px;">
+                            </div>
+                            <div style="flex:1;">
+                                <label style="display:block; color:#4ecdc4; font-size:10px;">Variável Máxima</label>
+                                <input type="text" id="el-targetMax" placeholder="ex: hpMax" style="width:100%; background:#111; border:1px solid #444; color:white; padding:5px;">
+                            </div>
+                        </div>
+                        
+                        <!-- Imagem / Asset -->
+                        <div id="grp-imagem" style="margin-bottom:15px; display:none;">
+                            <label style="display:block; color:#ff9f43; font-size:12px; margin-bottom:5px;">Asset de Imagem</label>
+                            <div style="display:flex; gap:5px;">
+                                <input type="text" id="el-assetId" placeholder="Asset ID" style="flex:1; background:#111; border:1px solid #444; color:white; padding:5px;">
+                                <button id="btn-pick-asset" style="padding:5px; cursor:pointer;">🔍</button>
+                            </div>
+                        </div>
+
+                        <!-- Texto -->
+                        <div id="grp-texto" style="margin-bottom:15px; display:none;">
+                            <label style="display:block; color:#ff9f43; font-size:12px; margin-bottom:5px;">Texto / Template</label>
+                            <input type="text" id="el-textoFixo" placeholder="Ex: HP: {val}/{max}" style="width:100%; background:#111; border:1px solid #444; color:white; padding:5px;">
+                            <div style="font-size:10px; color:#666; margin-top:3px;">Use {val}, {max}, {pct} para valores dinâmicos.</div>
+                            
+                            <div style="display:flex; gap:10px; margin-top:5px;">
+                                <input type="number" id="el-fontSize" placeholder="Size" value="12" style="width:60px; background:#111; border:1px solid #444; color:white; padding:5px;">
+                                <input type="color" id="el-color-text" value="#ffffff" style="height:28px;">
+                            </div>
+                        </div>
+
+                        <!-- Posicionamento & Dimensões -->
+                        <div style="margin-bottom:15px; display:flex; gap:10px;">
+                            <div style="flex:1;">
+                                <label style="display:block; color:#888; font-size:10px;">X (Offset)</label>
+                                <input type="number" id="el-offsetX" style="width:100%; background:#111; border:1px solid #444; color:white; padding:5px;">
+                            </div>
+                            <div style="flex:1;">
+                                <label style="display:block; color:#888; font-size:10px;">Y (Offset)</label>
+                                <input type="number" id="el-offsetY" style="width:100%; background:#111; border:1px solid #444; color:white; padding:5px;">
+                            </div>
+                             <div style="flex:1;">
+                                <label style="display:block; color:#888; font-size:10px;">Largura</label>
+                                <input type="number" id="el-width" style="width:100%; background:#111; border:1px solid #444; color:white; padding:5px;">
+                            </div>
+                            <div style="flex:1;">
+                                <label style="display:block; color:#888; font-size:10px;">Altura</label>
+                                <input type="number" id="el-height" style="width:100%; background:#111; border:1px solid #444; color:white; padding:5px;">
+                            </div>
+                        </div>
+
+                        <!-- Estilo Barra -->
+                        <div id="grp-style-bar" style="margin-bottom:15px;">
+                            <label style="display:block; color:#888; font-size:12px; margin-bottom:5px;">Estilo (Preenchimento / Fundo)</label>
+                            <div style="display:flex; gap:10px;">
+                                <input type="color" id="el-color-fill" style="flex:1; height:30px;">
+                                <input type="color" id="el-color-bg" style="flex:1; height:30px;">
+                            </div>
+                        </div>
+
+                        <div style="text-align:right; margin-top:20px; border-top:1px solid #333; padding-top:10px;">
+                             <button id="btn-delete-element" style="background:#c0392b; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer;">🗑️ Remover</button>
+                             <button id="btn-save-element" style="background:#27ae60; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; font-weight:bold;">💾 Aplicar</button>
+                        </div>
+                    </div>
+                    <div id="ui-empty-state" style="text-align:center; padding-top:50px; color:#666;">Selecione um elemento para editar.</div>
+                </div>
+            </div>`;
+
+        modal.innerHTML = header + bodyKey;
+        document.body.appendChild(modal);
+
+        // Estilo Inline
+        const style = document.createElement('style');
+        style.textContent = `.ui-type-opt { cursor:pointer; background:#333; padding:5px 8px; border-radius:4px; display:flex; align-items:center; color:#ccc; font-size:11px; margin-right:5px; } .ui-type-opt:has(input:checked) { background:#4ecdc4; color:#000; font-weight:bold; }`;
+        modal.appendChild(style);
+
+        // --- Lógica JS ---
+        const listContainer = modal.querySelector('#ui-elements-list');
+        const configPanel = modal.querySelector('#ui-element-config');
+        const emptyState = modal.querySelector('#ui-empty-state');
+        let currentEditingId = null;
+
+        const renderList = () => {
+            listContainer.innerHTML = '';
+            uiComponent.elementos.forEach((el, index) => {
+                const item = document.createElement('div');
+                item.style.cssText = `padding: 8px; border-bottom:1px solid #333; cursor:pointer; background: ${currentEditingId === index ? '#444' : 'transparent'}; color: ${currentEditingId === index ? '#fff' : '#aaa'}; display:flex; align-items:center; gap:5px;`;
+
+                let icon = '❓';
+                if (el.tipo === 'barra') icon = '📏';
+                else if (el.tipo === 'icones') icon = '❤️';
+                else if (el.tipo === 'imagem') icon = '🖼️';
+                else if (el.tipo === 'texto') icon = '📝';
+
+                item.innerHTML = `<span>${icon}</span><span style="font-size:12px;">${el.tipo}</span>`;
+                item.onclick = () => editElement(index);
+                listContainer.appendChild(item);
+            });
+        };
+
+        const updateVisibility = (tipo) => {
+            modal.querySelector('#grp-imagem').style.display = (tipo === 'imagem') ? 'block' : 'none';
+            modal.querySelector('#grp-texto').style.display = (tipo === 'texto') ? 'block' : 'none';
+            modal.querySelector('#grp-style-bar').style.display = (tipo === 'barra' || tipo === 'icones') ? 'block' : 'none';
+        };
+
+        const editElement = (index) => {
+            currentEditingId = index;
+            const el = uiComponent.elementos[index];
+            configPanel.style.display = 'block';
+            emptyState.style.display = 'none';
+            renderList();
+
+            modal.querySelector('#edit-element-id').value = index;
+
+            const radios = modal.querySelectorAll('input[name="el-type"]');
+            radios.forEach(r => {
+                r.checked = (r.value === el.tipo);
+                r.onclick = () => updateVisibility(r.value);
+            });
+            updateVisibility(el.tipo);
+
+            // Campos comuns
+            modal.querySelector('#el-target').value = el.alvo || '';
+            modal.querySelector('#el-targetMax').value = el.alvoMax || '';
+            modal.querySelector('#el-offsetX').value = el.offsetX || 0;
+            modal.querySelector('#el-offsetY').value = el.offsetY || 0;
+            modal.querySelector('#el-width').value = el.largura || 50;
+            modal.querySelector('#el-height').value = el.altura || 20;
+
+            // Campos específicos
+            modal.querySelector('#el-color-fill').value = el.corPreenchimento || '#ffffff';
+            modal.querySelector('#el-color-bg').value = el.corFundo || '#000000';
+            modal.querySelector('#el-assetId').value = el.assetId || '';
+            modal.querySelector('#el-textoFixo').value = el.textoFixo || '';
+            modal.querySelector('#el-fontSize').value = el.tamanhoFonte || 12;
+            modal.querySelector('#el-color-text').value = el.corTexto || '#ffffff';
+        };
+
+        modal.querySelector('#btn-add-element').onclick = () => {
+            uiComponent.elementos.push({ tipo: 'barra', offsetX: 10, offsetY: 10, largura: 100, altura: 10, corPreenchimento: '#ff0000', corFundo: '#333333' });
+            editElement(uiComponent.elementos.length - 1);
+        };
+
+        modal.querySelector('#btn-save-element').onclick = () => {
+            if (currentEditingId === null) return;
+            const el = uiComponent.elementos[currentEditingId];
+
+            el.tipo = modal.querySelector('input[name="el-type"]:checked').value;
+            el.alvo = modal.querySelector('#el-target').value;
+            el.alvoMax = modal.querySelector('#el-targetMax').value;
+            el.offsetX = parseFloat(modal.querySelector('#el-offsetX').value);
+            el.offsetY = parseFloat(modal.querySelector('#el-offsetY').value);
+            el.largura = parseFloat(modal.querySelector('#el-width').value);
+            el.altura = parseFloat(modal.querySelector('#el-height').value);
+
+            // Específicos
+            el.corPreenchimento = modal.querySelector('#el-color-fill').value;
+            el.corFundo = modal.querySelector('#el-color-bg').value;
+            el.assetId = modal.querySelector('#el-assetId').value;
+            el.textoFixo = modal.querySelector('#el-textoFixo').value;
+            el.tamanhoFonte = parseFloat(modal.querySelector('#el-fontSize').value);
+            el.corTexto = modal.querySelector('#el-color-text').value;
+
+            renderList();
+            this.atualizarPainelPropriedades();
+        };
+
+        modal.querySelector('#btn-delete-element').onclick = () => {
+            if (currentEditingId === null) return;
+            if (confirm('Remover?')) {
+                uiComponent.elementos.splice(currentEditingId, 1);
+                currentEditingId = null;
+                configPanel.style.display = 'none';
+                emptyState.style.display = 'block';
+                renderList();
+                this.atualizarPainelPropriedades();
+            }
+        };
+
+        modal.querySelector('#btn-close-ui').onclick = () => document.body.removeChild(modal);
+        renderList();
+    }
+
+    /**
+     * HUD EDITOR GLOBAL
+     * Cria/Seleciona a entidade de HUD Global e abre o editor.
+     */
+    abrirEditorHUD() {
+        let hudEnt = this.entidades.find(e => e.nome === '__GLOBAL_HUD__');
+
+        if (!hudEnt) {
+            hudEnt = new Entidade(0, 0, 0, 0); // Tamanho zero para não desenhar quadrado rosa
+            hudEnt.nome = '__GLOBAL_HUD__';
+            hudEnt.bloqueado = true; // Evitar delete acidental
+
+            const ui = new UIComponent();
+            ui.renderMode = 'screen';
+            ui.usarPlayerGlobal = true;
+            ui.ativo = true;
+
+            // Preset Básico
+            ui.elementos.push({
+                tipo: 'barra', alvo: 'hp', alvoMax: 'hpMax',
+                offsetX: 20, offsetY: 20, largura: 200, altura: 20,
+                corFundo: '#333333', corPreenchimento: '#e74c3c'
+            });
+            ui.elementos.push({
+                tipo: 'texto', alvo: 'hp', alvoMax: 'hpMax',
+                textoFixo: '{val} / {max}',
+                offsetX: 30, offsetY: 35, corTexto: '#ffffff', tamanhoFonte: 12
+            });
+
+            hudEnt.adicionarComponente('UIComponent', ui);
+
+            this.engine.adicionarEntidade(hudEnt);
+            this.entidades.push(hudEnt);
+        }
+
+        // Garantir invisibilidade do corpo
+        hudEnt.largura = 0;
+        hudEnt.altura = 0;
+
+        this.selecionarEntidade(hudEnt);
+
+        // Tenta obter, se não tiver (save corrompido), cria de novo
+        let uiComp = hudEnt.obterComponente('UIComponent');
+        if (!uiComp) {
+            uiComp = new UIComponent();
+            uiComp.renderMode = 'screen';
+            uiComp.usarPlayerGlobal = true;
+            uiComp.ativo = true;
+            // Preset de recuperação
+            uiComp.elementos = [{ tipo: 'texto', textoFixo: 'HUD Recuperado', x: 10, y: 10 }];
+            hudEnt.adicionarComponente('UIComponent', uiComp);
+            this.log('HUD Global reparado (Componente hiada ausente).', 'warning');
+        }
+
+        if (uiComp) this.abrirUIBuilder(uiComp);
+    }
+
+    /**
+     * Abre menu/modal para escolher novo componente
+     */
     abrirMenuAdiocionarComponente() {
         const ent = this.entidadeSelecionada;
         const t = window.i18n.t.bind(window.i18n); // Helper para tradução
@@ -3242,7 +3708,8 @@ class EditorPrincipal {
             ],
             [t('category.visual')]: [
                 { id: 'ParallaxComponent', nome: t('comp.parallaxBg'), icon: '🌄', unico: true },
-                { id: 'ParticleEmitterComponent', nome: t('comp.particleSystem'), icon: '✨', unico: false }
+                { id: 'ParticleEmitterComponent', nome: t('comp.particleSystem'), icon: '✨', unico: false },
+                { id: 'UIComponent', nome: 'UI / HUD', icon: '❤️', unico: true }
             ],
             [t('category.gameplay')]: [
                 { id: 'DialogueComponent', nome: t('comp.dialogueSystem'), icon: '💬', unico: true },
@@ -3508,6 +3975,10 @@ class EditorPrincipal {
                     const particles = new ParticleEmitterComponent();
                     particles.aplicarPreset('fogo');
                     ent.adicionarComponente('ParticleEmitterComponent', particles);
+                } else if (tipo === 'UIComponent') {
+                    const ui = new UIComponent();
+                    ui.inicializar(ent);
+                    ent.adicionarComponente('UIComponent', ui);
                 }
 
                 this.atualizarPainelPropriedades();
@@ -3749,6 +4220,8 @@ class EditorPrincipal {
                             componente = new CheckpointComponent();
                         } else if (dadosComp.tipo === 'ParticleEmitterComponent') {
                             componente = new ParticleEmitterComponent();
+                        } else if (dadosComp.tipo === 'UIComponent') {
+                            componente = new UIComponent();
                         }
 
                         // Deserializar dados do componente se possível
@@ -3765,6 +4238,48 @@ class EditorPrincipal {
 
                             // Se for ScriptComponent, usa o ID salvo como chave para permitir múltiplos scripts
                             if (componente instanceof ScriptComponent && componente.id) {
+                                // --- AUTO-PATCH (Fix Wall Slide v5.0) ---
+                                // Verifica se é o script antigo e força atualização
+                                console.log('[Auto-Patch] Checking script:', componente.scriptName);
+                                if (componente.scriptName === 'MovimentacaoPlataformaScript' || componente.scriptName === 'MovimentacaoAvancada') {
+                                    const source = componente.source || '';
+                                    console.log('[Auto-Patch] Script type matched. Checking version...');
+                                    console.log('[Auto-Patch] Has v5.0.1?', source.includes('v5.0.1 REFACTOR-FIXED'));
+                                    console.log('[Auto-Patch] GeradorScript available?', typeof GeradorScript !== 'undefined');
+
+                                    if (!source.includes('v5.0.1 REFACTOR-FIXED') && typeof GeradorScript !== 'undefined') {
+                                        console.log('🔄 [Auto-Patch] Atualizando MovimentacaoPlataformaScript para v5.0.1...');
+                                        try {
+                                            const gerador = new GeradorScript();
+                                            // Configuração padrão segura (Atributos do usuário serão restaurados pelo Hot-Reload)
+                                            const infoSimulado = {
+                                                nome: 'MovimentacaoPlataformaScript',
+                                                descricao: 'Script Movimentação Plataforma (Patched v5.0)',
+                                                estados: ['idle', 'walk', 'jump', 'fall', 'wallSlide'],
+                                                parametros: {
+                                                    velocidadeHorizontal: 200,
+                                                    forcaPulo: 600,
+                                                    forcaWallJump: 650,
+                                                    impulsoHorizontalWall: 300,
+                                                    velocidadeDeslizamento: 150,
+                                                    distanciaDeteccaoParede: 5
+                                                }
+                                            };
+                                            const newSource = gerador.gerarMovimentacaoPlataforma(infoSimulado);
+                                            console.log('[Auto-Patch] Generated Source Preview:', newSource.substring(0, 200));
+                                            console.log('[Auto-Patch] Generated new source, length:', newSource.length);
+                                            componente.source = newSource;
+                                            console.log('✅ [Auto-Patch] Script atualizado com sucesso!');
+                                        } catch (e) {
+                                            console.error('❌ Falha no Auto-Patch:', e);
+                                            console.error('Stack:', e.stack);
+                                        }
+                                    } else {
+                                        console.log('[Auto-Patch] Script já está atualizado ou GeradorScript não disponível');
+                                    }
+                                }
+                                // -----------------------------------------
+
                                 entidade.adicionarComponente(componente.id, componente);
                             } else {
                                 entidade.adicionarComponente(componente);
@@ -4173,6 +4688,8 @@ class EditorPrincipal {
                                     else if (dadosComp.tipo === 'DialogueComponent') componente = new DialogueComponent();
                                     else if (dadosComp.tipo === 'KillZoneComponent') componente = new KillZoneComponent();
                                     else if (dadosComp.tipo === 'CheckpointComponent') componente = new CheckpointComponent();
+                                    else if (dadosComp.tipo === 'ParticleEmitterComponent') componente = new ParticleEmitterComponent();
+                                    else if (dadosComp.tipo === 'UIComponent') componente = new UIComponent();
 
                                     // Deserializar dados
                                     if (componente) {

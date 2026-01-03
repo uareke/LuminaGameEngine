@@ -789,3 +789,53 @@ body.resizing-row {
 #btn-close-lighting:hover {
     background: #ff3333;
 }
+
+/* =========================================
+   HIERARQUIA E DRAG DROP (Adicionado)
+   ========================================= */
+.tree-item {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    margin-bottom: 2px;
+    transition: background 0.1s;
+    color: #ccc;
+    font-size: 13px;
+    border: 1px solid transparent; 
+}
+
+.tree-item:hover {
+    background: rgba(78, 205, 196, 0.1);
+    color: white;
+}
+
+.tree-item.selected {
+    background: #4ecdc4 !important; 
+    color: #1a1a2e !important;
+    font-weight: bold;
+    border-color: #4ecdc4;
+}
+
+.tree-icon {
+    margin-right: 8px;
+    min-width: 16px;
+    text-align: center;
+}
+
+.tree-label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Drag & Drop Feedback Visual */
+.tree-item.drag-over,
+.folder-header.drag-over, 
+.drag-over {
+    border: 1px dashed #ffd700 !important;
+    background: rgba(255, 215, 0, 0.2) !important;
+    color: #ffd700 !important;
+}

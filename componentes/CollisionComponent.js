@@ -82,12 +82,20 @@ class CollisionComponent {
         // Resetar estado de chão
         entidade.noChao = false;
 
+        // Se o player pulou (velocidade Y negativa), desgrudar do chão
+        if (entidade.velocidadeY < -50) { // Threshold para detectar pulo
+            entidade._grounded = false;
+        }
+
         for (const tilemapEnt of tilemapEnts) {
             const tilemap = tilemapEnt.obterComponente('TilemapComponent');
             if (!tilemap || !tilemap.ativo) continue;
 
-            const tileSize = tilemap.tileSize || 32;
-            if (tileSize <= 0) continue;
+            let baseSize = tilemap.tileSize || 32;
+            if (baseSize <= 0) continue;
+
+            const scale = tilemap.scale || 1.0;
+            const tileSize = baseSize * scale; // Tamanho efetivo do tile no mundo
 
             const bounds = this.obterLimitesAbsolutos(entidade);
             if (isNaN(bounds.x) || isNaN(bounds.y)) return;
@@ -101,6 +109,17 @@ class CollisionComponent {
             const startRow = Math.floor(relY / tileSize);
             const endRow = Math.floor((relY + bounds.h) / tileSize);
 
+            // Acumular correções necessárias (FIX: Evita aplicar múltiplas vezes)
+            let maxCorrectionTop = 0;
+            let maxCorrectionBottom = 0;
+            let maxCorrectionLeft = 0;
+            let maxCorrectionRight = 0;
+            let shouldApplyTop = false;
+            let shouldApplyBottom = false;
+            let shouldApplyLeft = false;
+            let shouldApplyRight = false;
+            let potentialGround = false;
+
             // Verificar tiles na área da entidade
             for (let r = startRow; r <= endRow; r++) {
                 for (let c = startCol; c <= endCol; c++) {
@@ -108,20 +127,17 @@ class CollisionComponent {
 
                     let isSolid = false;
                     if (tile) {
-                        if (typeof tile === 'object' && tile.solid) {
+                        if (typeof tile === 'object' && (tile.solid || tile.wall || tile.ground)) {
                             isSolid = true;
                         }
                     }
 
                     if (isSolid) {
-                        // Log Removido
-                        // console.log('[COLLISION DEBUG] Tile sólido detectado em', c, r, 'tile:', tile);
-                        // Disparar evento
                         this.dispararEvento(entidade, 'MapCollision', tilemapEnt, { x: c, y: r });
 
                         // Resolução Física Simples (AABB vs AABB estático)
                         const tileX = tilemapEnt.x + c * tileSize;
-                        const tileY = tilemapEnt.y + r * tileSize; // Topo do tile visual
+                        const tileY = tilemapEnt.y + r * tileSize;
 
                         const tileW = tileSize;
                         const tileH = tileSize;
@@ -129,82 +145,135 @@ class CollisionComponent {
                         const entLeft = bounds.x;
                         const entRight = bounds.x + bounds.w;
                         const entTop = bounds.y;
-                        const entBottom = bounds.y + bounds.h; // Pé da entidade
+                        const entBottom = bounds.y + bounds.h;
 
                         const tileLeft = tileX;
                         const tileRight = tileX + tileW;
                         const tileTop = tileY;
                         const tileBottom = tileY + tileH;
 
-                        // Calcular overlaps
-                        const overlapLeft = entRight - tileLeft;
-                        const overlapRight = tileRight - entLeft;
-                        const overlapTop = entBottom - tileTop;
-                        const overlapBottom = tileBottom - entTop;
+                        // Verificar vizinhos para "Internal Edge Smoothing" (Evitar colisão em arestas internas)
+                        const tileAbove = tilemap.getTile(c, r - 1);
+                        const tileBelow = tilemap.getTile(c, r + 1);
+                        const tileLeftN = tilemap.getTile(c - 1, r);
+                        const tileRightN = tilemap.getTile(c + 1, r);
+
+                        const solidAbove = tileAbove && tileAbove.solid;
+                        const solidBelow = tileBelow && tileBelow.solid;
+                        const solidLeft = tileLeftN && tileLeftN.solid;
+                        const solidRight = tileRightN && tileRightN.solid;
+
+                        // Calcular overlaps (Infinita se houver vizinho, ignorando a aresta)
+                        const overlapLeft = solidLeft ? Infinity : (entRight - tileLeft);
+                        const overlapRight = solidRight ? Infinity : (tileRight - entLeft);
+                        const overlapTop = solidAbove ? Infinity : (entBottom - tileTop);
+                        const overlapBottom = solidBelow ? Infinity : (tileBottom - entTop);
 
                         // Determinar menor sobreposição para resolver
                         const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
 
+                        // Se minOverlap for Infinity, estamos dentro da parede sólida (sem arestas expostas relevantes)
+                        if (minOverlap === Infinity) continue;
+
+                        // [FIX-FLICKER] Detectar se existe chão potencial abaixo (para Sticky Ground funcionar apenas se houver chão)
+                        if ((minOverlap === overlapTop || minOverlap === overlapBottom) && (solidBelow || minOverlap !== Infinity)) {
+                            // Heurística simples: Se há colisão vertical calculada, existe "chão/teto" potencial.
+                            potentialGround = true;
+                        }
+
+                        // TOLERÂNCIA: Ignora overlaps muito pequenos (< 0.5px) para evitar "micro-colisões"
+                        if (minOverlap < 0.5) {
+                            continue; // Pula este tile
+                        }
+
                         if (tile && tile.plataforma) {
                             // Lógica One-Way Platform (Permissive Fit)
-                            // Colide se estiver caindo (ou parado)
                             const isFalling = entidade.velocidadeY >= 0;
 
-                            // Heurística: Se overlapTop for menor que overlapBottom, estamos na metade superior.
-                            // Adicionei = para o caso exato do meio (raro mas possível)
                             if (isFalling && overlapTop <= overlapBottom) {
-                                // Correção de Posição (Snap to Top)
-                                const correction = overlapTop;
-                                entidade.y -= correction;
-                                entidade.velocidadeY = 0;
-                                entidade.noChao = true;
+                                // Acumula a maior correção necessária
+                                if (overlapTop > maxCorrectionTop) {
+                                    maxCorrectionTop = overlapTop;
+                                    shouldApplyTop = true;
+                                    potentialGround = true; // Confirmed ground
+                                }
                             }
-                            // Ignora todas as outras direções
                             continue;
                         }
 
+                        // Acumular correções (em vez de aplicar diretamente)
                         if (minOverlap === overlapTop) {
-                            // Colisão em cima (Piso)
                             if (entidade.velocidadeY > 0 && !this.isTrigger) {
-                                // Correção de posição
-                                const correction = overlapTop;
-                                // Add check before applying
-                                if (!isNaN(correction)) {
-                                    entidade.y -= correction;
+                                if (overlapTop > maxCorrectionTop) {
+                                    maxCorrectionTop = overlapTop;
+                                    shouldApplyTop = true;
+                                    potentialGround = true;
                                 }
-                                entidade.velocidadeY = 0;
-                                entidade.noChao = true;
                             }
                         } else if (minOverlap === overlapBottom) {
-                            // Colisão embaixo (Teto)
                             if (entidade.velocidadeY < 0 && !this.isTrigger) {
-                                const correction = overlapBottom;
-                                if (!isNaN(correction)) {
-                                    entidade.y += correction;
+                                if (overlapBottom > maxCorrectionBottom) {
+                                    maxCorrectionBottom = overlapBottom;
+                                    shouldApplyBottom = true;
                                 }
-                                entidade.velocidadeY = 0;
                             }
                         } else if (minOverlap === overlapLeft) {
-                            // Colisão na esquerda (Parede direita do player bate)
                             if (entidade.velocidadeX > 0 && !this.isTrigger) {
-                                const correction = overlapLeft;
-                                if (!isNaN(correction)) {
-                                    entidade.x -= correction;
+                                if (overlapLeft > maxCorrectionLeft) {
+                                    maxCorrectionLeft = overlapLeft;
+                                    shouldApplyLeft = true;
                                 }
-                                entidade.velocidadeX = 0;
                             }
                         } else if (minOverlap === overlapRight) {
-                            // Colisão na direita (Parede esquerda do player bate)
                             if (entidade.velocidadeX < 0 && !this.isTrigger) {
-                                const correction = overlapRight;
-                                if (!isNaN(correction)) {
-                                    entidade.x += correction;
+                                if (overlapRight > maxCorrectionRight) {
+                                    maxCorrectionRight = overlapRight;
+                                    shouldApplyRight = true;
                                 }
-                                entidade.velocidadeX = 0;
                             }
                         }
                     }
                 }
+            }
+
+            // Aplicar correções UMA VEZ (evita acumulação)
+            if (shouldApplyTop && !isNaN(maxCorrectionTop)) {
+                // console.log('🔴 CORREÇÃO TOPO:', maxCorrectionTop.toFixed(2), 'px | Player Y:', entidade.y.toFixed(1));
+                entidade.y -= maxCorrectionTop;
+                entidade.velocidadeY = 0;
+                entidade.noChao = true;
+
+                // FIX DEFINITIVO: Marcar a posição Y "grudada" para evitar flutuação
+                // Nos próximos frames, se o overlap for micro (<2px) e estiver grudado, não corrige
+                entidade._groundY = entidade.y;
+                entidade._grounded = true;
+
+            } else if (entidade._grounded && maxCorrectionTop < 2.0 && potentialGround) {
+                // FIXED: Só aplica Sticky Ground se HOUVER potencialGround (tile sólido abaixo).
+                // Evita flutuar ao sair de um cliff (onde potentialGround = false).
+                // console.log('⚠️ IGNORADO (grudado):', maxCorrectionTop.toFixed(2), 'px');
+                entidade.y = entidade._groundY; // Força posição exata
+                entidade.velocidadeY = 0;
+                entidade.noChao = true;
+
+            } else {
+                // Perdeu contato com o chão e não há chão potencial (Cliff) -> Cai
+                entidade._grounded = false;
+            }
+            if (shouldApplyBottom && !isNaN(maxCorrectionBottom)) {
+                console.log('🔵 CORREÇÃO TETO:', maxCorrectionBottom.toFixed(2), 'px');
+                entidade.y += maxCorrectionBottom;
+                entidade.velocidadeY = 0;
+            }
+            if (shouldApplyLeft && !isNaN(maxCorrectionLeft)) {
+                console.log('⬅️ CORREÇÃO ESQUERDA:', maxCorrectionLeft.toFixed(2), 'px');
+                entidade.x -= maxCorrectionLeft;
+                entidade.velocidadeX = 0;
+            }
+            if (shouldApplyRight && !isNaN(maxCorrectionRight)) {
+                console.log('➡️ CORREÇÃO DIREITA:', maxCorrectionRight.toFixed(2), 'px');
+                entidade.x += maxCorrectionRight;
+                entidade.velocidadeX = 0;
             }
         }
     }

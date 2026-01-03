@@ -1,6 +1,7 @@
 import Entidade from './Entidade.js';
 import { SpriteComponent } from '../componentes/SpriteComponent.js';
 import CollisionComponent from '../componentes/CollisionComponent.js';
+import TilemapComponent from '../componentes/TilemapComponent.js';
 
 /**
  * Factory Para Criação de Entidades
@@ -16,8 +17,13 @@ export class EntidadeFactory {
      * @returns {Entidade}
      */
     static criar(tipo, x = 0, y = 0) {
-        // Passar x e y para o construtor para definir startX/startY corretamente
-        const entidade = new Entidade(tipo, undefined, x, y);
+        // Gerar ID Único
+        const id = 'entidade_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+        // Nome provisório (sera sobrescrito pelo switch abaixo, mas garante fallback)
+        const nomeInicial = tipo ? (tipo.charAt(0).toUpperCase() + tipo.slice(1)) : 'Nova Entidade';
+
+        const entidade = new Entidade(id, nomeInicial, x, y);
+        entidade.tipo = tipo || 'objeto'; // Garante que o tipo seja definido
 
         // Redundância para garantir
         entidade.x = x;
@@ -103,7 +109,18 @@ export class EntidadeFactory {
                 entidade.altura = 100;
                 // Menus não têm física
                 entidade.temGravidade = false;
+                entidade.temGravidade = false;
                 entidade.solido = false;
+                break;
+
+            case 'tilemap':
+                entidade.nome = 'Tilemap';
+                // entidade.tipo já setado no início
+                entidade.adicionarComponente('TilemapComponent', new TilemapComponent());
+                entidade.temGravidade = false;
+                entidade.solido = false;
+                entidade.largura = 32; // Placeholder
+                entidade.altura = 32;
                 break;
 
             default:
