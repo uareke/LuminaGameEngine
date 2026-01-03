@@ -73,6 +73,32 @@ class RespawnScript {
         // Move para limbo
         this.entidade.x = -9999;
         this.entidade.y = -9999;
+        
+        // Tenta dar XP (Se configurado)
+        this.dropXP();
+    }
+    
+    dropXP() {
+        // Valor de XP fixo ou tenta ler de outros scripts
+        const xpAmount = this.xpDrop || 25;
+        
+        if (!this.entidade.engine) return;
+        
+        // Busca Player
+        const player = this.entidade.engine.entidades.find(e => {
+            const nome = (e.nome || '').toLowerCase();
+            return nome.includes('player') || nome === 'player' || (e.tags && e.tags.some(t => t.toLowerCase() === 'player'));
+        });
+        
+        if (player) {
+            if (player.ganharXP) {
+                player.ganharXP(xpAmount);
+                console.log('✨ [Respawn] Player ganhou', xpAmount, 'XP!');
+            } else if (player.xp !== undefined) {
+                player.xp += xpAmount;
+                console.log('✨ [Respawn] Player XP somado:', player.xp);
+            }
+        }
     }
 
     atualizar(deltaTime) {
@@ -601,9 +627,14 @@ class InimigoPatrulhaScript {
         // === DANO VISUAL ===
         this.tomouDano = false;
         this.tempoDano = 0;
-        this.duracaoDano = 0.3; // Pisca por 0.3s
+        // === VISUAL ===
+        this.duracaoDano = 0.3;
         
-        this.inverterSprite = true;
+        // CONFIGURAÇÃO DE SPRITE
+        // Se o desenho original do seu inimigo olha para a ESQUERDA, marque true.
+        // Se olha para a DIREITA (Padrão), deixe false.
+        this.spriteOriginalEsquerda = false;
+        
         this.startX = entidade.x;
         this.direcao = 1;
         this.entidade.temGravidade = true;
@@ -612,6 +643,9 @@ class InimigoPatrulhaScript {
         this.maxX = this.startX + this.distanciaPatrulha;
         
         this.estado = 'patrulhando'; // patrulhando, perseguindo, atacando, morto
+        
+        // EXPOR API PARA COMBATE
+        this.entidade.receberDano = this.receberDano.bind(this);
         
         console.log('[IA Patrulha v2] Iniciado:', entidade.nome, '| HP:', this.hpMax);
     }
@@ -668,12 +702,20 @@ class InimigoPatrulhaScript {
         if (!this.entidade.engine) return;
         
         const player = this.encontrarPlayer();
-        if (player && player.ganharXP) {
+        
+        if (!player) {
+            console.warn('⚠️ [Inimigo] Tentei dar XP mas não achei o Player! (Certifique-se que o nome é "Player" ou tem a tag "player")');
+            return;
+        }
+
+        if (player.ganharXP) {
             player.ganharXP(this.xpDrop);
-            console.log('✨ Player ganhou', this.xpDrop, 'XP!');
-        } else if (player && player.xp !== undefined) {
+            console.log('✨ Player ganhou', this.xpDrop, 'XP! (via ganharXP)');
+        } else if (player.xp !== undefined) {
             player.xp += this.xpDrop;
-            console.log('✨ Player XP:', player.xp);
+            console.log('✨ Player XP somado direto:', player.xp);
+        } else {
+             console.warn('⚠️ [Inimigo] Player encontrado, mas ele não tem StatsRPG (sem xp/ganharXP).');
         }
     }
     
@@ -683,7 +725,13 @@ class InimigoPatrulhaScript {
         const entidades = this.entidade.engine.entidades;
         return entidades.find(e => {
             const nome = (e.nome || '').toLowerCase();
-            return nome.includes('player') || nome.includes('jogador') || nome.includes('hero') || e.tipo === 'player';
+            // Busca por NOME, TIPO, TAGS ou FLAG isPlayer
+            return nome.includes('player') || 
+                   nome.includes('jogador') || 
+                   nome.includes('hero') || 
+                   e.tipo === 'player' ||
+                   (e.tags && e.tags.some(t => t.toLowerCase() === 'player')) ||
+                   e.isPlayer === true;
         });
     }
 
@@ -698,6 +746,12 @@ class InimigoPatrulhaScript {
             return;
         }
         
+        // CHECAGEM DE SEGURANÇA: Morte por dano externo (sem chamar receberDano)
+        if (this.entidade.hp <= 0 && !this.morto) {
+            this.morrer();
+            return;
+        }
+
         // Atualiza feedback de dano
         if (this.tomouDano) {
             this.tempoDano += deltaTime;
@@ -731,8 +785,8 @@ class InimigoPatrulhaScript {
                 const sprite = this.entidade.obterComponente('SpriteComponent');
                 if (sprite) {
                     sprite.play('attack');
-                    const deveInverter = (this.direcao < 0);
-                    sprite.inverterX = this.inverterSprite ? !deveInverter : deveInverter;
+                    // Ajuste de direção
+                    sprite.inverterX = this.calcularInversaoSprite(this.direcao);
                 }
             }
             // PERSEGUIÇÃO
@@ -746,8 +800,8 @@ class InimigoPatrulhaScript {
                 const sprite = this.entidade.obterComponente('SpriteComponent');
                 if (sprite) {
                     sprite.play('run') || sprite.play('walk');
-                    const deveInverter = (this.direcao < 0);
-                    sprite.inverterX = this.inverterSprite ? !deveInverter : deveInverter;
+                    // Ajuste de direção
+                    sprite.inverterX = this.calcularInversaoSprite(this.direcao);
                 }
             }
             // PATRULHA
@@ -776,10 +830,25 @@ class InimigoPatrulhaScript {
 
         const sprite = this.entidade.obterComponente('SpriteComponent');
         if (sprite) {
-            const deveInverter = (this.direcao < 0);
-            sprite.inverterX = this.inverterSprite ? !deveInverter : deveInverter;
+            // Ajuste de direção usando helper seguro
+            sprite.inverterX = this.calcularInversaoSprite(this.direcao);
             sprite.play('walk');
         }
+    }
+    
+    calcularInversaoSprite(dir) {
+        // Converte para boolean real (caso venha string do editor)
+        const originalEsq = (String(this.spriteOriginalEsquerda) === 'true');
+        const indoDireita = (dir > 0);
+        
+        const inverter = indoDireita ? originalEsq : !originalEsq;
+        
+        // Debug Ocasional
+        if (Math.random() < 0.005) {
+             // console.log('🐛 [Patrulha] Dir: ' + dir + ', OrigEsq: ' + originalEsq + ' -> Inverter: ' + inverter);
+        }
+        
+        return inverter;
     }
 
     atacar(player) {
@@ -838,19 +907,250 @@ class InimigoPatrulhaScript {
 `;
     }
 
-    /**
-     * Gera script para movimentação plataforma
-     */
     gerarMovimentacaoPlataforma(info) {
-        const velocidadeHorizontal = info.parametros.velocidadeHorizontal || 200;
-        const forcaPulo = info.parametros.forcaPulo || 600;
+        const vel = info.parametros.velocidadeHorizontal || 200;
+        const pulo = info.parametros.forcaPulo || 600;
+        const distParede = info.parametros.distanciaDeteccaoParede || 2;
+        const wallSlideVel = info.parametros.velocidadeDeslizamento || 100;
+
+        // Asymmetric Offsets (No auto-force, pure user control)
+        const offsetLeft = info.parametros.offsetVisualWallEsq || 0;
+        const offsetRight = info.parametros.offsetVisualWallDir || 0;
+
+        let code = '// PLATFORMER SCRIPT v5.8.0 ATTACK-FIRST - Checks attack state before ANY input processing\n';
+        code += 'class MovimentacaoPlataformaScript {\n';
+        code += '  constructor(entidade) {\n';
+        code += '    this.entidade = entidade;\n';
+        code += '    this.velocidade = ' + vel + ';\n';
+        code += '    this.velocidadeCorrida = ' + (vel * 1.8) + ';\n';
+        code += '    this.forcaPulo = ' + pulo + ';\n';
+        code += '    this.distanciaParede = ' + distParede + ';\n';
+        code += '    this.velocidadeWallSlide = ' + wallSlideVel + ';\n';
+        code += '    this.offsetWallEsq = ' + offsetLeft + ';\n';
+        code += '    this.offsetWallDir = ' + offsetRight + ';\n';
+        code += '    this.paredeEsq = false;\n';
+        code += '    this.paredeDir = false;\n';
+        code += '    this.entidade.temGravidade = true;\n';
+        code += '    if (!this.entidade.gravidade) this.entidade.gravidade = 1200;\n';
+        code += '  }\n';
+        code += '  detectarParedes() {\n';
+        code += '    this.paredeEsq = false; this.paredeDir = false;\n';
+        code += '    if (!this.entidade.engine) return;\n';
+        code += '    const tilemapEntities = this.entidade.engine.entidades.filter(e => e.obterComponente("TilemapComponent"));\n';
+        code += '    if (tilemapEntities.length === 0) return;\n';
+        code += '    \n';
+        code += '    const colComp = this.entidade.obterComponente("CollisionComponent");\n';
+        code += '    if (!colComp) return;\n';
+        code += '    const bounds = colComp.obterLimitesAbsolutos(this.entidade);\n';
+        code += '    const checkDist = this.distanciaParede; const marginY = 4;\n';
+        code += '    // STRICT: Head (Top + 4px) must be BELOW the wall top. \n';
+        code += '    // This forces the player to fall almost entirely past the corner before sliding.\n';
+        code += '    const sensorTop = bounds.y + marginY;\n';
+        code += '    const sensorBottom = bounds.y + bounds.h - marginY;\n';
+        code += '    const sensorLeft = bounds.x - checkDist;\n';
+        code += '    const sensorRight = bounds.x + bounds.w + checkDist;\n';
+        code += '    \n';
+        code += '    // Clearing moved to top\n';
+        code += '    \n';
+        code += '    for (const tmEntity of tilemapEntities) {\n';
+        code += '      const tileComp = tmEntity.obterComponente("TilemapComponent");\n';
+        code += '      const tileSize = tileComp.tileSize * tileComp.scale;\n';
+        code += '      const tilemapX = tmEntity.x || 0;\n';
+        code += '      const tilemapY = tmEntity.y || 0;\n';
+        code += '      \n';
+        code += '      const startCol = Math.floor(((bounds.x - checkDist) - tilemapX) / tileSize);\n';
+        code += '      const endCol = Math.floor(((bounds.x + bounds.w + checkDist) - tilemapX) / tileSize);\n';
+        code += '      const startRow = Math.floor((sensorTop - tilemapY) / tileSize);\n';
+        code += '      const endRow = Math.floor((sensorBottom - tilemapY) / tileSize);\n';
+        code += '      \n';
+        code += '      for (let r = startRow; r <= endRow; r++) {\n';
+        code += '        for (let c = startCol; c <= endCol; c++) {\n';
+        code += '          const tile = tileComp.getTile(c, r);\n';
+        code += '          if (!tile) continue;\n';
+        code += '          \n';
+        code += '          if (!tile.solid && !tile.wall && !tile.ground) continue;\n';
+        code += '          \n';
+        code += '          const tileX = tilemapX + c * tileSize;\n';
+        code += '          const tileY = tilemapY + r * tileSize;\n';
+        code += '          // Strict Check: HEAD (SensorTop) must be BELOW the top of the wall tile to avoid corner grabs\n';
+        code += '          const overlapsY = (sensorTop > tileY && sensorTop < tileY + tileSize && sensorBottom > tileY);\n';
+        code += '          if (!overlapsY) continue;\n';
+        code += '          \n';
+        code += '          if (tileX + tileSize > sensorLeft && tileX < bounds.x) { \n';
+        code += '              this.paredeEsq = true; \n';
+        code += '              // console.log("LDetect:", "Top:", sensorTop, "> TileY:", tileY, "=", (sensorTop > tileY));\n';
+        code += '          }\n';
+        code += '          if (tileX < sensorRight && tileX + tileSize > bounds.x + bounds.w) { \n';
+        code += '              this.paredeDir = true; \n';
+        code += '              // console.log("RDetect:", "Top:", sensorTop, "> TileY:", tileY, "=", (sensorTop > tileY));\n';
+        code += '          }\n';
+        code += '        }\n';
+        code += '      }\n';
+        code += '    }\n';
+        code += '  }\n';
+        code += '\n';
+        code += '  // Helper: Find other scripts by class name\n';
+        code += '  obterScriptPorNome(nomeDaClasse) {\n';
+        code += '    for (const [key, comp] of this.entidade.componentes) {\n';
+        code += '      if (key.startsWith("ScriptComponent") && comp.scriptName === nomeDaClasse) {\n';
+        code += '        return comp.instance; // The running script instance\n';
+        code += '      }\n';
+        code += '    }\n';
+        code += '    return null;\n';
+        code += '  }\n';
+        code += '\n';
+        code += '  processarInput(input, deltaTime) {\n';
+        code += '    // CRITICAL: Check attack state FIRST, before any other logic\n';
+        code += '    // This prevents custom code (crouch, etc) from overriding attack animations\n';
+        code += '    const attackScript = this.obterScriptPorNome("CombateMeleeScript");\n';
+        code += '    const isAttacking = attackScript && attackScript.estaOcupado && attackScript.estaOcupado();\n';
+        code += '    if (isAttacking) {\n';
+        code += '        this.entidade.velocidadeX = 0;\n';
+        code += '        return; // Let attack/slide script handle everything\n';
+        code += '    }\n';
+        code += '    \n';
+        code += '    const noChao = this.entidade.noChao;\n';
+        code += '    this.detectarParedes();\n';
+        code += '    let vx = 0;\n';
+        code += '    const correndo = input.teclaPressionada("Shift");\n';
+        code += '    const pressEsq = input.teclaPressionada("a") || input.teclaPressionada("A") || input.teclaPressionada("ArrowLeft");\n';
+        code += '    const pressDir = input.teclaPressionada("d") || input.teclaPressionada("D") || input.teclaPressionada("ArrowRight");\n';
+        code += '    const pressDown = input.teclaPressionada("s") || input.teclaPressionada("S") || input.teclaPressionada("ArrowDown");\n';
+        code += '    \n';
+        code += '    // Calculate velocity based on state\n';
+        code += '    let velAtual = this.velocidade;\n';
+        code += '    if (pressDown && noChao) {\n';
+        code += '        velAtual = this.velocidadeAgachado; // Reduced speed when crouching\n';
+        code += '    } else if (correndo) {\n';
+        code += '        velAtual = this.velocidadeCorrida;\n';
+        code += '    }\n';
+        code += '    \n';
+        code += '    // Safety check to prevent NaN\n';
+        code += '    if (isNaN(velAtual)) velAtual = this.velocidade;\n';
+        code += '    \n';
+        code += '    if (pressEsq) vx = -velAtual;\n';
+        code += '    if (pressDir) vx = velAtual;\n';
+        code += '    \n';
+        code += '    // Safety check for velocity\n';
+        code += '    if (isNaN(vx)) vx = 0;\n';
+        code += '    this.entidade.velocidadeX = vx;\n';
+        code += '    \n';
+        code += '    // ANIMACAO & ESTADO\n';
+        code += '    \n';
+        code += '    const spriteComp = this.entidade.obterComponente("SpriteComponent");\n';
+        code += '    const anims = spriteComp ? spriteComp.animacoes : {};\n';
+        code += '    const hasAnim = (name) => anims && (anims[name] || anims[name.toLowerCase()] || anims[name.toUpperCase()]);\n';
+        code += '    \n';
+        code += '    // Helper: Tenta tocar animacao preferida, senao fallback\n';
+        code += '    const playAnim = (p1, p2) => {\n';
+        code += '        if (!spriteComp) return;\n';
+        code += '        if (hasAnim(p1)) spriteComp.play(p1);\n';
+        code += '        else if (p2 && hasAnim(p2)) spriteComp.play(p2);\n';
+        code += '    };\n';
+        code += '    \n';
+        code += '    // WALL SLIDE LOGIC\n';
+        code += '    if (!noChao && this.entidade.velocidadeY > 0 && ((this.paredeEsq && pressEsq) || (this.paredeDir && pressDir))) {\n';
+        code += '       if (this.entidade.velocidadeY > this.velocidadeWallSlide) this.entidade.velocidadeY = this.velocidadeWallSlide;\n';
+        code += '       \n';
+        code += '       // Physical Snap: Force player against wall to prevent floating\n';
+        code += '       if (this.paredeEsq) this.entidade.velocidadeX = -10;\n';
+        code += '       if (this.paredeDir) this.entidade.velocidadeX = 10;\n';
+        code += '       \n';
+        code += '       // DEBUG: Ajuda a descobrir o nome da animacao\n';
+        code += '       // console.log("Anims Disponiveis:", Object.keys(anims));\n';
+        code += '       \n';
+        code += '       // Tenta varias keys comuns\n';
+        code += '       if (hasAnim("wallslide")) spriteComp.play("wallslide");\n';
+        code += '       else if (hasAnim("wall_slide")) spriteComp.play("wall_slide");\n';
+        code += '       else if (hasAnim("slide")) spriteComp.play("slide");\n';
+        code += '       else if (hasAnim("escalando")) spriteComp.play("escalando");\n';
+        code += '       else console.log("AVISO: Nenhuma animacao de wallslide encontrada (wallslide, wall_slide, slide, escalando). Disponiveis:", Object.keys(anims));\n';
+        code += '       \n';
+        code += '       if (spriteComp) {\n';
+        code += '           // Wall Cling Logic (Front-to-Wall): \n';
+        code += '           // Left Wall -> Face Left (True)\n';
+        code += '           // Right Wall -> Face Right (False)\n';
+        code += '           // Offset: Both apply POSITIVE shift relative to facing direction logic (handled by engine) \n';
+        code += '           if (this.paredeDir) { spriteComp.inverterX = false; spriteComp.offsetX = this.offsetWallDir; }\n';
+        code += '           if (this.paredeEsq) { spriteComp.inverterX = true; spriteComp.offsetX = this.offsetWallEsq; }\n';
+        code += '           \n';
+        code += '           // console.log("Offset Applied. L:", this.offsetWallEsq, "R:", this.offsetWallDir);\n';
+        code += '       }\n';
+        code += '       \n';
+        code += '       if (input.teclaPrecionadaAgora(" ") || input.teclaPrecionadaAgora("ArrowUp")) {\n';
+        code += '         this.entidade.velocidadeY = -this.forcaPulo;\n';
+        code += '         this.entidade.velocidadeX = this.paredeEsq ? velAtual : -velAtual;\n';
+        code += '         return;\n';
+        code += '       }\n';
+        code += '    } else {\n';
+        code += '       if (!noChao) {\n';
+        code += '          const isJump = this.entidade.velocidadeY < 0;\n';
+        code += '          if (isJump) playAnim("pulo", "jump");\n';
+        code += '          else playAnim("caindo", "fall");\n';
+
+        code += '       } else {\n';
+        code += '          // Ground Logic\n';
+        code += '          if (pressDown) {\n';
+        code += '             // Crouch or Crouch Walk\n';
+        code += '             if (Math.abs(vx) > 10) {\n';
+        code += '                 // Try crouch walk, fallback to regular walk\n';
+        code += '                 if (hasAnim("crouch_walk") || hasAnim("andar_abaixado")) {\n';
+        code += '                     playAnim("crouch_walk", "andar_abaixado");\n';
+        code += '                 } else {\n';
+        code += '                     playAnim("andando", "walk");\n';
+        code += '                 }\n';
+        code += '             } else {\n';
+        code += '                 playAnim("abaixar", "crouch");\n';
+        code += '             }\n';
+        code += '          } else if (Math.abs(vx) > 10) {\n';
+        code += '            if (correndo) playAnim("correndo", "run");\n';
+        code += '            else playAnim("andando", "walk");\n';
+        code += '          } else {\n';
+        code += '            playAnim("parado", "idle");\n';
+        code += '          }\n';
+        code += '       }\n';
+        code += '       \n';
+        code += '       if (vx < 0 && spriteComp) spriteComp.inverterX = true;\n';
+        code += '       if (vx > 0 && spriteComp) spriteComp.inverterX = false;\n';
+        code += '       if (spriteComp) spriteComp.offsetX = 0; // Reset offset\n';
+        code += '       \n';
+        code += '       if ((input.teclaPrecionadaAgora(" ") || input.teclaPrecionadaAgora("ArrowUp")) && noChao) {\n';
+        code += '          this.entidade.velocidadeY = -this.forcaPulo;\n';
+        code += '       }\n';
+        code += '    }\n';
+        code += '  }\n';
+        code += '  atualizar(dt) {\n';
+        code += '    // Safety: Validate position before physics\n';
+        code += '    if (isNaN(this.entidade.x) || isNaN(this.entidade.y)) {\n';
+        code += '        console.error("[MovPlat] Position became NaN! Resetting to spawn.");\n';
+        code += '        this.entidade.x = this.entidade.startX || 0;\n';
+        code += '        this.entidade.y = this.entidade.startY || 0;\n';
+        code += '        this.entidade.velocidadeX = 0;\n';
+        code += '        this.entidade.velocidadeY = 0;\n';
+        code += '    }\n';
+        code += '    \n';
+        code += '    this.entidade.velocidadeY += this.entidade.gravidade * dt;\n';
+        code += '    this.entidade.y += this.entidade.velocidadeY * dt;\n';
+        code += '    this.entidade.x += this.entidade.velocidadeX * dt;\n';
+        code += '    this.entidade.noChao = false;\n';
+        code += '  }\n';
+        code += '}\n';
+        return code;
+    }
+
+
+
+    /**
+     * Gera script genérico
+     */
+    gerarGenerico(info) {
         // Parâmetros Wall Jump (defaults se não existirem)
         const forcaWallJump = info.parametros.forcaWallJump || 650;
         const impulsoHorizontalWall = info.parametros.impulsoHorizontalWall || 300;
         const velocidadeDeslizamento = info.parametros.velocidadeDeslizamento || 50;
         const distanciaDeteccaoParede = info.parametros.distanciaDeteccaoParede || 5;
 
-        return `/**
+        const scriptCode = `/**
  * Script de Movimentação Plataforma (Integrado com Física + Wall Jump)
  * Gerado automaticamente pela Game Engine
  * 
@@ -858,64 +1158,64 @@ class InimigoPatrulhaScript {
  * Estados: ${info.estados.join(', ')}
  */
 
-const animIdle = 'idle';
-const animWalk = 'walk';
-const animRun = 'run';
-const animJump = 'jump';
-const animFall = 'fall';
-const animCrouch = 'crouch';
-const animCrouchWalk = 'crouchWalk'; // Andar agachado
-const animSlide = 'slide'; // Deslizar
-const animWallSlide = 'wallSlide'; // Wall slide
+    const animIdle = 'idle';
+    const animWalk = 'walk';
+    const animRun = 'run';
+    const animJump = 'jump';
+    const animFall = 'fall';
+    const animCrouch = 'crouch';
+    const animCrouchWalk = 'crouchWalk'; // Andar agachado
+    const animSlide = 'slide'; // Deslizar
+    const animWallSlide = 'wallSlide'; // Wall slide
 
 class MovimentacaoPlataformaScript {
     constructor(entidade) {
-        console.log('✅ SCRIPT DE MOVIMENTAÇÃO - v4.1 INTRA-WALL');
+        console.log('✅ SCRIPT DE MOVIMENTAÇÃO - v5.0.1 REFACTOR-FIXED');
         this.entidade = entidade;
-        this.entidade = entidade;
-        
+
         // --- SEÇÃO MOVIMENTO ---
         this.SECTION_Movimentacao = 'Básico';
-        this.mov_velocidade = ${velocidadeHorizontal};
-        this.mov_corrida = ${velocidadeHorizontal * 1.8};
-        this.mov_pulo = ${forcaPulo};
-        
+        this.velocidade = ${velocidadeHorizontal};
+        this.velocidadeCorrida = ${velocidadeHorizontal * 1.8};
+        this.velocidadeAgachado = ${velocidadeHorizontal * 0.5};
+        this.forcaPulo = ${forcaPulo};
+
         // --- SEÇÃO WALL JUMP ---
         this.SECTION_Wall_Jump = 'Ajustes Finos';
         this.wall_forcaPulo = ${forcaWallJump}; // Força Y
         this.wall_impulso = ${impulsoHorizontalWall}; // Força X
         this.wall_slideVel = ${velocidadeDeslizamento};
-        
+
         // [CONFIGURAÇÃO FINA DE DETECÇÃO]
         this.SECTION_Deteccao_Parede = 'Sensores';
         this.wall_tolerancia_dir = 25; // Distância (px) p/ Direita
         this.wall_tolerancia_esq = 25; // Distância (px) p/ Esquerda
         this.wall_margemChao = 5; // Altura (px) diferenciar chão
-        
+
         // [CROUCH WALK]
         this.SECTION_Crouch = 'Agachado';
         this.crouch_velocidade = ${velocidadeHorizontal * 0.5}; // Velocidade ao andar agachado (50% normal)
-        
+
         // [SLIDE]
         this.SECTION_Slide = 'Deslizar';
         this.slide_velocidade = ${velocidadeHorizontal * 2.2}; // Velocidade do slide (220% normal)
         this.slide_duracao = 0.4; // Duração do slide (segundos)
         this.slide_cooldown = 0.8; // Tempo de espera entre slides (segundos)
-        
 
-        
+
+
         // [OUTROS AJUSTES GAMEPLAY]
         this.SECTION_Gameplay = 'Timers';
         this.coyoteTime = 0.15; // Tempo para pular após cair (s)
         this.wallJumpCooldownTime = 0.2; // Tempo sem controle após WJ (s)
-        
+
         // === INVENCIBILIDADE (I-FRAMES) ===
         this.SECTION_Invencibilidade = 'Sistema de Dano';
         this.iframes_duracao = 1.5; // Duração da invencibilidade (segundos)
         this.iframes_piscar = 0.1; // Velocidade do piscar (segundos)
         this.hit_animacao = 'hit'; // Nome da animação de hit (opcional)
-        
-        
+
+
         // Estado interno de invencibilidade
         this._invencivel = false;
         this._tempoInvencivel = 0;
@@ -923,19 +1223,24 @@ class MovimentacaoPlataformaScript {
         this._visivel = true;
         this._tocandoHit = false; // Flag para controlar animação de hit
         this._tempoHit = 0; // Timer da animação de hit
-        
-        // === MORTE ===stados internos (não editáveis, começam com _)
-        this._distanciaDeteccao = ${distanciaDeteccaoParede};
+
+        // === MORTE ===
+        this._morto = false;
+        this._tempoMorte = 0;
+        this._deathScreenAtivado = false;
+
+        // Wall Jump / Slide
+        this.paredeEsq = false;
+        this.paredeDir = false;
         this.naParede = false;
-        this.direcaoParede = 0; // -1 = esquerda, 1 = direita
-        this.wallJumpCooldown = 0;
-        this.wallStickBuffer = 0; // Buffer para manter naParede estável
-        
+        this.contatoParedeReal = false;
+        this.direcaoParede = 0;
+        this.wallStickBuffer = 0;
         // Slide
         this.slideTimer = 0; // Tempo restante do slide
         this.slideCooldownTimer = 0; // Cooldown entre slides
         this.slideDirecao = 0; // Direção do slide (1 = direita, -1 = esquerda)
-        
+
 
         this.estado = 'parado';
 
@@ -975,15 +1280,16 @@ class MovimentacaoPlataformaScript {
         let vx = 0;
         const noChao = this.entidade.noChao;
         let direcaoInput = 0;
-        
+
         // Verifica se está em slide
         const emSlide = this.slideTimer > 0;
 
         // Inputs Especiais
         const correndo = engine.teclaPressionada('Shift');
         const agachando = (engine.teclaPressionada('s') || engine.teclaPressionada('S') || engine.teclaPressionada('ArrowDown')) && noChao && !emSlide;
-        
-        // Slide: Pressionar C ou Ctrl enquanto está se movendo no chão
+
+        /*
+        // Slide: Press C or Ctrl while moving on ground
         const tentouSlide = (engine.teclaPrecionadaAgora('c') || engine.teclaPrecionadaAgora('C') || engine.teclaPrecionadaAgora('Control'));
         
         if (tentouSlide && noChao && !emSlide && this.slideCooldownTimer <= 0 && Math.abs(this.entidade.velocidadeX) > 10) {
@@ -992,12 +1298,13 @@ class MovimentacaoPlataformaScript {
             this.slideDirecao = this.entidade.velocidadeX > 0 ? 1 : -1;
             this.estado = 'slide';
         }
+        */
 
         // Teclas A/D ou Setas para movimento horizontal
         if (this.wallJumpCooldown <= 0 && !emSlide) {
             // Define velocidade base
             let vel = this.mov_velocidade;
-            
+
             if (agachando) {
                 // Movimento agachado - velocidade reduzida
                 vel = this.crouch_velocidade;
@@ -1026,7 +1333,7 @@ class MovimentacaoPlataformaScript {
 
         // Detectar Parede SEMPRE
         this.detectarParede(direcaoInput);
-        
+
         // Reseta se estiver no chão
         if (noChao) {
             this.naParede = false;
@@ -1037,7 +1344,7 @@ class MovimentacaoPlataformaScript {
             // Pulo do chão
             if (noChao && !agachando) {
                 this.pular();
-            } 
+            }
             // Wall Jump
             else if (this.naParede && !noChao) {
                 this.wallJump();
@@ -1048,7 +1355,7 @@ class MovimentacaoPlataformaScript {
         if (emSlide) {
             this.estado = 'slide';
         } else if (this.wallJumpCooldown > 0) {
-             this.estado = 'pulando';
+            this.estado = 'pulando';
         } else if (this.naParede && !noChao) {
             this.estado = 'naParede';
         } else if (!noChao) {
@@ -1075,11 +1382,11 @@ class MovimentacaoPlataformaScript {
 
     wallJump() {
         this.entidade.velocidadeY = -this.wall_forcaPulo;
-        
+
         // Impulso para o lado oposto da parede
-        const direcaoPulo = -this.direcaoParede; 
+        const direcaoPulo = -this.direcaoParede;
         this.entidade.velocidadeX = direcaoPulo * this.wall_impulso;
-        
+
         // Cooldown para não voltar pra parede instantaneamente
         this.wallJumpCooldown = this.wallJumpCooldownTime || 0.2;
         this.naParede = false;
@@ -1088,28 +1395,30 @@ class MovimentacaoPlataformaScript {
 
 
     detectarParede(direcaoInput) {
+        // LOG GLOBAL ENTITY
+        console.log(">> DETECTAR PAREDE CHAMADO", this.entidade.noChao);
+
         // Só detecta parede se estiver NO AR
         if (this.entidade.noChao) {
             this.naParede = false;
             return;
         }
-        
+
         // DESTICK: Se apertar para longe da parede, solta
-        if (this.naParede) {
-            // Se está na parede DIREITA e aperta ESQUERDA, solta
-            if (this.direcaoParede === 1 && direcaoInput === -1) {
-                this.naParede = false;
-                return;
-            }
-            // Se está na parede ESQUERDA e aperta DIREITA, solta
-            if (this.direcaoParede === -1 && direcaoInput === 1) {
-                this.naParede = false;
-                return;
-            }
-        }
-        
+
         this.naParede = false;
+        this.contatoParedeReal = false;
+        this.distanciaBaseParede = 0; // Reset da métrica anti-seam // Indica se há contato FÍSICO neste frame (sem buffer)
+
         if (!this.entidade.engine) return;
+
+        // DESTICK: Se apertar para longe da parede, solta imediatamente
+        if (this.direcaoParede === 1 && direcaoInput === -1) {
+            return;
+        }
+        if (this.direcaoParede === -1 && direcaoInput === 1) {
+            return;
+        }
 
         const colComp = this.entidade.obterComponente('CollisionComponent');
         if (!colComp) return;
@@ -1120,24 +1429,24 @@ class MovimentacaoPlataformaScript {
         // --- 1. Detecção por OBJETOS (Entidades Sólidas) ---
         for (const outra of this.entidade.engine.entidades) {
             if (outra === this.entidade) continue;
-            
+
             if (outra.solido) {
                 const outraCol = outra.obterComponente('CollisionComponent');
                 if (outraCol && outraCol.ativo) {
                     const outraBounds = outraCol.obterLimitesAbsolutos(outra);
-                    
+
                     // Usa CENTRO do player para garantir simetria (funcionar esq/dir igual)
                     const playerCenterX = bounds.x + bounds.w / 2;
                     const playerHalfWidth = bounds.w / 2;
-                    
+
                     const playerLeft = bounds.x;
                     const playerRight = bounds.x + bounds.w;
                     const wallLeft = outraBounds.x;
                     const wallRight = outraBounds.x + outraBounds.w;
-                    
+
                     // Tolerância configurável (DIR/ESQ SEPARADOS)
                     const tolDir = this.wall_tolerancia_dir || 25;
-                    const tolEsq = this.wall_tolerancia_esq || 25; 
+                    const tolEsq = this.wall_tolerancia_esq || 25;
 
                     // Filtro de Chão SIMPLIFICADO E SEGURO
                     // Se o topo do objeto está abaixo do pé do player (-margem), é chão.
@@ -1150,18 +1459,18 @@ class MovimentacaoPlataformaScript {
                     // -30 a 0: permite após física empurrar (-30 a 0), SEM tolerância extra
                     const distDireita = wallLeft - playerRight;
                     if (distDireita >= -30 && distDireita <= 0) {
-                        if (direcaoInput >= 0) { 
-                            paredeEncontrada = true; 
+                        if (direcaoInput >= 0) {
+                            paredeEncontrada = true;
                             this.direcaoParede = 1;
                         }
                     }
-                    
+
                     // Checa ESQUERDA - player tentando ir para esquerda
                     // Distância do lado esquerdo do player até o lado direito da parede
                     const distEsquerda = playerLeft - wallRight;
                     if (distEsquerda >= -30 && distEsquerda <= 0) {
-                        if (direcaoInput <= 0) { 
-                            paredeEncontrada = true; 
+                        if (direcaoInput <= 0) {
+                            paredeEncontrada = true;
                             this.direcaoParede = -1;
                         }
                     }
@@ -1172,90 +1481,144 @@ class MovimentacaoPlataformaScript {
         // --- 2. Detecção por TILEMAPS (Tiles Sólidos) ---
         if (!paredeEncontrada) {
             const tilemapEnts = this.entidade.engine.entidades.filter(e => e.obterComponente('TilemapComponent'));
-            
+
             for (const tilemapEnt of tilemapEnts) {
                 const tilemap = tilemapEnt.obterComponente('TilemapComponent');
                 if (!tilemap || !tilemap.ativo) continue;
-                
-                const tileSize = tilemap.tileSize || 32;
+
+                const scale = tilemap.scale || 1;
+                const tileSize = (tilemap.tileSize || 32) * scale;
                 if (tileSize <= 0) continue;
-                
+
                 // Converter bounds do player para coordenadas de grid
                 const relX = bounds.x - tilemapEnt.x;
                 const relY = bounds.y - tilemapEnt.y;
-                
+
                 // Calcular area de verificação expandida para detectar paredes próximas
                 const tolDir = this.wall_tolerancia_dir || 25;
                 const tolEsq = this.wall_tolerancia_esq || 25;
                 const maxTol = Math.max(tolDir, tolEsq);
-                
+
                 const startCol = Math.floor((relX - maxTol) / tileSize);
                 const endCol = Math.floor((relX + bounds.w + maxTol) / tileSize);
                 const startRow = Math.floor(relY / tileSize);
                 const endRow = Math.floor((relY + bounds.h) / tileSize);
-                
+
                 // Usar centro do player para cálculos
                 const playerCenterX = bounds.x + bounds.w / 2;
                 const playerHalfWidth = bounds.w / 2;
                 const margem = this.wall_margemChao || 5;
-                
+
+                // Log Entry
+                console.log("DetectarParede (Gen): checking tilemap...");
+
                 // Verificar tiles ao redor do player
                 for (let r = startRow; r <= endRow; r++) {
                     for (let c = startCol; c <= endCol; c++) {
                         const tile = tilemap.getTile(c, r);
+                        if (tile) console.log("TileFound:", c, r, JSON.stringify(tile));
                         
+                        // DEBUG LOG (Ativo)
+                        if (tile && (tile.wall || tile.ground)) console.log("GenCheck:", c, r, "W:", tile.wall, "G:", tile.ground);
+
                         // Verificar se é tile sólido (não-plataforma)
                         let isSolid = false;
-                        if (tile && typeof tile === 'object' && tile.solid && !tile.plataforma) {
+                        if (tile && typeof tile === 'object' && (tile.solid || tile.wall) && !tile.plataforma) {
                             isSolid = true;
                         }
-                        
+
                         if (isSolid) {
                             // Calcular posição absoluta do tile
                             const tileX = tilemapEnt.x + c * tileSize;
                             const tileY = tilemapEnt.y + r * tileSize;
-                            
-                            // Filtro de chão (igual ao de entidades)
-                            const isChao = tileY >= (bounds.y + bounds.h - margem);
-                            if (isChao) continue;
-                            
+
                             // Calcular posições das bordas
                             const playerLeft = bounds.x;
                             const playerRight = bounds.x + bounds.w;
+                            const playerTop = bounds.y;
+                            const playerBottom = bounds.y + bounds.h;
+                            const playerCenterY = bounds.y + bounds.h / 2;
+
                             const tileLeft = tileX;
                             const tileRight = tileX + tileSize;
-                            
-                            // Checa DIREITA - distância do lado direito do player até o lado esquerdo do tile
-                            const distDireita = tileLeft - playerRight;
-                            if (distDireita >= -30 && distDireita <= 0) {
-                                if (direcaoInput >= 0) {
+                            const tileTop = tileY;
+                            const tileBottom = tileY + tileSize;
+                            const tileCenterY = tileY + tileSize / 2;
+
+                            // ---------------------------------------------------------
+                            // NOVA LÓGICA V3: PRIORIDADE PARA DADOS DO TILE (WEB-IDE STYLE)
+                            // ---------------------------------------------------------
+
+                            // Se o tile tem definição explícita de "Wall" ou "Ground"
+                            const isExplicitWall = !!tile.wall;
+                            const isExplicitGround = !!tile.ground;
+
+                            // Se for marcado como CHÃO explícito: ignora wall slide
+                            if (isExplicitGround) continue;
+
+                            // Se for marcado como PAREDE explícita: checa lado e aplica
+                            if (isExplicitWall) {
+                                // 1. Geometric Check: Aspect Ratio (CRÍTICO)
+                                // Se o overlap horizontal for maior que o vertical, é interação de Chão/Teto, não Parede.
+                                const overY1 = Math.max(bounds.y, tileY);
+                                const overY2 = Math.min(bounds.y + bounds.h, tileY + tileSize);
+                                const overlapY = overY2 - overY1;
+
+                                const overX1 = Math.max(bounds.x, tileX);
+                                const overX2 = Math.min(bounds.x + bounds.w, tileX + tileSize);
+                                const overlapX = overX2 - overX1;
+
+                                if (overlapX > overlapY) continue; // É Chão! 
+
+                                if (overlapY < 10) continue; // Muito pequeno
+
+                                // 2. Checagem de Topo (Refinamento)
+                                const margemTopo = 8;
+                                if (playerBottom < tileTop + margemTopo) continue;
+
+                                // 3. Checagem Lateral Estrita
+                                const tileCX = tileX + tileSize / 2;
+                                const playerCX = bounds.x + bounds.w / 2;
+
+                                // INPUT ESTRITO:
+                                // INPUT ESTRITO + LOGS
+                                if (tileCX > playerCX && direcaoInput > 0) {
+                                    // Direita
+                                    //console.log('DETECTADO DIREITA');
                                     paredeEncontrada = true;
                                     this.direcaoParede = 1;
                                     break;
-                                }
-                            }
-                            
-                            // Checa ESQUERDA - distância do lado esquerdo do player até o lado direito do tile
-                            const distEsquerda = playerLeft - tileRight;
-                            if (distEsquerda >= -30 && distEsquerda <= 0) {
-                                if (direcaoInput <= 0) {
+                                } else if (tileCX < playerCX && direcaoInput < 0) {
+                                    // Esquerda
+                                    //console.log('DETECTADO ESQUERDA');
                                     paredeEncontrada = true;
                                     this.direcaoParede = -1;
                                     break;
                                 }
                             }
+
+                            // ---------------------------------------------------------
+                            // FALLBACK (SENSOR V2): Lógica Geométrica para Tiles sem Tags
+                            // ---------------------------------------------------------
+                            // ---------------------------------------------------------
+                            // FALLBACK REMOVIDO: Wall Slide requer tag 'isWall' explícita
+                            // ---------------------------------------------------------
+                            /* 
+                                Lógica de fallback removida para garantir que o slide 
+                                SÓ aconteça em tiles marcados manualmente no editor.
+                            */
                         }
                     }
                     if (paredeEncontrada) break;
                 }
-                if (paredeEncontrada) break;
             }
         }
 
         // Aplicar buffer para manter estado estável em tile sets
         if (paredeEncontrada) {
             this.naParede = true;
-            this.wallStickBuffer = 0.15; // Mantém por 150ms mesmo se perder contato
+            this.contatoParedeReal = true;
+            this.wallStickBuffer = 0.15; // Mantém por 150ms apenas para PULO
         } else {
             // Só desliga se o buffer expirou
             if (this.wallStickBuffer <= 0) {
@@ -1265,49 +1628,53 @@ class MovimentacaoPlataformaScript {
     }
 
     atualizar(deltaTime) {
+        // DETECTAR PAREDES (V5.0) - Executa antes de tudo
+        this.detectarParede(0);
+
         // ===== VERIFICAÇÃO DE MORTE =====
         if (!this._morto && this.entidade.hp !== undefined && this.entidade.hp <= 0) {
             this._morto = true;
             this._tempoMorte = 0; // Inicia contador
             this.entidade.velocidadeX = 0;
             this.entidade.velocidadeY = 0;
-            
+
             // Toca animação death
             const sprite = this.entidade.obterComponente('SpriteComponent');
             if (sprite) {
                 sprite.autoplayAnim = ''; // Desabilita autoplay
                 sprite.play('death');
-                
+
                 // Garante que não faz loop
                 if (sprite.animacoes && sprite.animacoes['death']) {
                     sprite.animacoes['death'].loop = false;
                 }
             }
-            
-            console.log('💀 Player morreu! Animação death iniciada.');
+
+            // Animação de morte tocada
+            // console.log('💀 Player morreu! Animação death iniciada.');
         }
-        
+
         // Se morto, aguarda animação completar e ativa DeathScreen
         if (this._morto) {
             this.entidade.velocidadeX = 0;
             this.entidade.velocidadeY = 0;
-            
+
             // Incrementa tempo de morte
             if (!this._tempoMorte) this._tempoMorte = 0;
             this._tempoMorte += deltaTime;
-            
+
             // Aguarda 1.5s (tempo suficiente para animação) e ativa DeathScreen
             if (this._tempoMorte >= 1.5 && !this._deathScreenAtivado) {
                 this._deathScreenAtivado = true;
-                
+
                 console.log('💀 Procurando DeathScreen...');
-                
+
                 // Procura o DeathScreen em todos os componentes
                 for (const [tipo, comp] of this.entidade.componentes.entries()) {
                     if (comp.tipo === 'ScriptComponent' && comp.instance) {
                         const nome = comp.instance.constructor.name;
                         console.log('🔍 Script encontrado:', nome);
-                        
+
                         if (nome === 'DeathScreenScript') {
                             console.log('💀 Ativando Death Screen!');
                             if (comp.instance.onDeath) {
@@ -1318,16 +1685,16 @@ class MovimentacaoPlataformaScript {
                     }
                 }
             }
-            
+
             return; // Para aqui - não processa movimento nem animações
         }
-        
+
         // Cooldown
         if (this.wallJumpCooldown > 0) this.wallJumpCooldown -= deltaTime;
-        
+
         // Wall Stick Buffer (decrementar)
         if (this.wallStickBuffer > 0) this.wallStickBuffer -= deltaTime;
-        
+
         // Slide Timer (decrementar)
         if (this.slideTimer > 0) {
             this.slideTimer -= deltaTime;
@@ -1336,7 +1703,7 @@ class MovimentacaoPlataformaScript {
                 this.slideCooldownTimer = this.slide_cooldown;
             }
         }
-        
+
         // Slide Cooldown (decrementar)
         if (this.slideCooldownTimer > 0) this.slideCooldownTimer -= deltaTime;
 
@@ -1347,55 +1714,99 @@ class MovimentacaoPlataformaScript {
             this.wallStickBuffer = 0; // Reseta buffer ao tocar no chão
         } else {
             this.coyoteTimer -= deltaTime;
-        }
+            // ==== WALL SLIDE V5.0 (FINAL) ====
+            // Lógica simplificada baseada em flags de sensor
+            this.contatoParedeReal = false;
 
-        // Wall Slide (apenas ao cair)
-        if (this.naParede && this.entidade.velocidadeY > 0 && this.entidade.velocidadeY > this.wall_slideVel) {
-            this.entidade.velocidadeY = this.wall_slideVel;
-        }
+            const inputEsquerda = direcaoInput < 0;
+            const inputDireita = direcaoInput > 0;
 
-        // Respawn
-        if (this.entidade.y > 2000) {
-            this.entidade.y = 0;
-            this.entidade.velocidadeY = 0;
-        }
+            let shouldSlide = false;
 
-        // === CONTROLA DURAÇÃO DA ANIMAÇÃO DE HIT (DEVE ESTAR AQUI, SEMPRE EXECUTA) ===
-        if (this._tocandoHit) {
-            this._tempoHit += deltaTime;
-            
-            // Após 0.5s, volta para idle
-            if (this._tempoHit >= 0.5) {
-                this._tocandoHit = false;
-                
-                const spriteHit = this.entidade.obterComponente('SpriteComponent');
-                if (spriteHit) {
-                    spriteHit.play(animIdle);
+            if (!this.entidade.noChao && this.entidade.velocidadeY >= 0) {
+
+                // Slide Esquerda
+                if (this.paredeEsq && inputEsquerda) {
+                    this.direcaoParede = -1;
+                    this.contatoParedeReal = true;
+                    shouldSlide = true;
+                    this.entidade.x += 0.1; // Lateral Push Constante
+                }
+                // Slide Direita
+                else if (this.paredeDir && inputDireita) {
+                    this.direcaoParede = 1;
+                    this.contatoParedeReal = true;
+                    shouldSlide = true;
+                    this.entidade.x -= 0.1; // Lateral Push Constante
                 }
             }
-        }
+
+            if (shouldSlide) {
+                // Anti-Stick: Se velocidade travou em 0 nas emendas, força descida
+                if (this.entidade.velocidadeY === 0) {
+                    this.entidade.y += 1;
+                }
+                this.entidade.velocidadeY = this.wall_slideVel;
+
+                // Estado visual
+                this.naParede = true;
+                this.wallStickBuffer = 0.15;
+
+                // Animação override
+                this.entidade.animacaoAtual = 'wall_slide';
+                const sprite = this.entidade.obterComponente('SpriteComponent');
+                if (sprite) {
+                    sprite.flipX = this.direcaoParede === -1;
+                    sprite.play('wall_slide');
+                }
+            }
+
+            // Verifica cooldown de estado 'naParede' para Pulos
+            if (!shouldSlide && this.wallStickBuffer <= 0) {
+                this.naParede = false;
+            }
+
+            // Respawn
+            if (this.entidade.y > 2000) {
+                this.entidade.y = 0;
+            }
+
+            // === CONTROLA DURAÇÃO DA ANIMAÇÃO DE HIT (DEVE ESTAR AQUI, SEMPRE EXECUTA) ===
+            if (this._tocandoHit) {
+                this._tempoHit += deltaTime;
+
+                // Após 0.5s, volta para idle
+                if (this._tempoHit >= 0.5) {
+                    this._tocandoHit = false;
+
+                    const spriteHit = this.entidade.obterComponente('SpriteComponent');
+                    if (spriteHit) {
+                        spriteHit.play(animIdle);
+                    }
+                }
+            }
 
             //Lógica de Animação e Espelhamento ---
             const sprite = this.entidade.obterComponente('SpriteComponent');
             const col = this.entidade.obterComponente('CollisionComponent');
-            
+
             // Lógica de Direção Simples (CollisionComponent trata o Offset agora)
             const virarPara = (direita) => {
                 if (sprite) sprite.inverterX = !direita;
             };
-            
+
             // Verifica estado do script
             let scriptOcupado = false;
             for (const comp of this.entidade.componentes.values()) {
                 if (comp.tipo === 'ScriptComponent' && comp.instance && comp.instance.estaOcupado && comp.instance !== this) {
-                         if (comp.instance.estaOcupado()) { scriptOcupado = true; break; }
+                    if (comp.instance.estaOcupado()) { scriptOcupado = true; break; }
                 }
             }
             if (!scriptOcupado) {
                 // Aplica direção
                 if (this.naParede) {
-                        if (this.direcaoParede === 1) virarPara(true);
-                        else virarPara(false);
+                    if (this.direcaoParede === 1) virarPara(true);
+                    else virarPara(false);
                 } else if (Math.abs(this.entidade.velocidadeX) > 0.1) {
                     if (this.entidade.velocidadeX > 0) virarPara(true);
                     else virarPara(false);
@@ -1407,7 +1818,7 @@ class MovimentacaoPlataformaScript {
 
             // IMPORTANTE: Não sobrescrever animação de hit enquanto estiver tocando
             const estaTocandoHit = this._tocandoHit;
-            
+
             if (!scriptOcupado && !estaTocandoHit && sprite) {
                 if (this.naParede && !isGrounded) {
                     if (sprite.animacoes && sprite.animacoes[animWallSlide]) {
@@ -1419,126 +1830,199 @@ class MovimentacaoPlataformaScript {
                     if (this.entidade.velocidadeY < 0) sprite.play(animJump);
                     else sprite.play(animFall) || sprite.play(animJump);
                 } else {
-                if (this.estado === 'slide') {
-                    // Slide - animação de deslizar
-                    if (sprite.animacoes && sprite.animacoes[animSlide]) {
-                        sprite.play(animSlide);
-                    } else if (sprite.animacoes && sprite.animacoes[animCrouch]) {
-                        sprite.play(animCrouch);
+                    if (this.estado === 'slide') {
+                        // Slide - animação de deslizar
+                        if (sprite.animacoes && sprite.animacoes[animSlide]) {
+                            sprite.play(animSlide);
+                        } else if (sprite.animacoes && sprite.animacoes[animCrouch]) {
+                            sprite.play(animCrouch);
+                        } else {
+                            sprite.play(animIdle);
+                        }
+                    } else if (this.estado === 'crouchWalk') {
+                        // Andar agachado - tenta usar animação específica, senão usa crouch normal
+                        if (sprite.animacoes && sprite.animacoes[animCrouchWalk]) {
+                            sprite.play(animCrouchWalk);
+                        } else {
+                            sprite.play(animCrouch) || sprite.play(animIdle);
+                        }
+                    } else if (this.estado === 'agachado') {
+                        sprite.play(animCrouch) || sprite.play(animIdle);
+                    } else if (Math.abs(this.entidade.velocidadeX) > 10) {
+                        if (this.estado === 'correndo' && sprite.animacoes && sprite.animacoes[animRun]) {
+                            sprite.play(animRun);
+                        } else {
+                            sprite.play(animWalk);
+                        }
                     } else {
                         sprite.play(animIdle);
                     }
-                } else if (this.estado === 'crouchWalk') {
-                    // Andar agachado - tenta usar animação específica, senão usa crouch normal
-                    if (sprite.animacoes && sprite.animacoes[animCrouchWalk]) {
-                        sprite.play(animCrouchWalk);
-                    } else {
-                        sprite.play(animCrouch) || sprite.play(animIdle);
+                } // Fecha verificação !scriptOcupado
+
+                // === ATUALIZA INVENCIBILIDADE ===
+                if (this._invencivel) {
+                    this._tempoInvencivel += deltaTime;
+                    this._tempoPiscar += deltaTime;
+
+                    // Piscar (alternando flag)
+                    if (this._tempoPiscar >= this.iframes_piscar) {
+                        this._tempoPiscar = 0;
+                        this._visivel = !this._visivel;
+
+                        // Marca entidade como piscando
+                        this.entidade._piscando = !this._visivel;
                     }
-                } else if (this.estado === 'agachado') {
-                    sprite.play(animCrouch) || sprite.play(animIdle);
-                } else if (Math.abs(this.entidade.velocidadeX) > 10) {
-                    if (this.estado === 'correndo' && sprite.animacoes && sprite.animacoes[animRun]) {
-                        sprite.play(animRun);
-                    } else {
-                        sprite.play(animWalk);
+
+                    // Fim da invencibilidade
+                    if (this._tempoInvencivel >= this.iframes_duracao) {
+                        this._invencivel = false;
+                        this._visivel = true;
+                        this.entidade._piscando = false;
+
+                        console.log('🛡️ Invencibilidade terminou (durou', this._tempoInvencivel.toFixed(2), 's)');
                     }
-                } else {
-                    sprite.play(animIdle);
                 }
-            } // Fecha verificação !scriptOcupado
-            
-            // === ATUALIZA INVENCIBILIDADE ===
+            }
+        }
+
+        /**
+         * Método chamado quando o player recebe dano
+         * IMPORTANTE: Este método é chamado pelo sistema de combate
+         */
+        receberDano(quantidade) {
+            // Se está invencível, ignora o dano
             if (this._invencivel) {
-                this._tempoInvencivel += deltaTime;
-                this._tempoPiscar += deltaTime;
-                
-                // Piscar (alternando flag)
-                if (this._tempoPiscar >= this.iframes_piscar) {
-                    this._tempoPiscar = 0;
-                    this._visivel = !this._visivel;
-                    
-                    // Marca entidade como piscando
-                    this.entidade._piscando = !this._visivel;
-                }
-                
-                // Fim da invencibilidade
-                if (this._tempoInvencivel >= this.iframes_duracao) {
-                    this._invencivel = false;
-                    this._visivel = true;
-                    this.entidade._piscando = false;
-                    
-                    console.log('🛡️ Invencibilidade terminou (durou', this._tempoInvencivel.toFixed(2), 's)');
-                }
+                console.log('🛡️ Dano bloqueado (invencível)');
+                return 0;
             }
-        }
-    }
-    
-    /**
-     * Método chamado quando o player recebe dano
-     * IMPORTANTE: Este método é chamado pelo sistema de combate
-     */
-    receberDano(quantidade) {
-        // Se está invencível, ignora o dano
-        if (this._invencivel) {
-            console.log('🛡️ Dano bloqueado (invencível)');
-            return 0;
-        }
-        
-        console.log('💥 [Platformer] Player recebeu', quantidade, 'de dano!');
-        console.log('   Duração invencibilidade:', this.iframes_duracao, 's');
-        
-        // Ativa invencibilidade
-        this._invencivel = true;
-        this._tempoInvencivel = 0;
-        this._tempoPiscar = 0;
-        
-        // Toca animação de hit (se existir)
-        const sprite = this.entidade.obterComponente('SpriteComponent');
-        if (sprite && sprite.animacoes && sprite.animacoes[this.hit_animacao]) {
-            sprite.play(this.hit_animacao);
-            this._tocandoHit = true;
-            this._tempoHit = 0;
-            console.log('💥 Tocando animação:', this.hit_animacao);
-        } else if (sprite) {
-            // Se não tem animação de hit, apenas pisca vermelho
-            sprite.flashing = true;
-            sprite.flashDuration = 0.2;
-        }
-        
-        // Procura o StatsRPG para aplicar o dano
-        let danoAplicado = false;
-        for (const [tipo, comp] of this.entidade.componentes.entries()) {
-            if (comp.tipo === 'ScriptComponent' && comp.instance) {
-                const nome = comp.instance.constructor.name;
-                
-                if (nome === 'StatsRPG' && comp.instance.receberDano) {
-                    comp.instance.receberDano(quantidade);
-                    danoAplicado = true;
-                    break;
-                }
-            }
-        }
-        
-        // Se não encontrou StatsRPG, aplica dano direto no HP
-        if (!danoAplicado && this.entidade.hp !== undefined) {
-            this.entidade.hp -= quantidade;
-            console.log('   HP:', this.entidade.hp);
-        }
-        
-        return quantidade;
-    }
 
-    obterEstado() { return this.estado; }
-}
+            console.log('💥 [Platformer] Player recebeu', quantidade, 'de dano!');
+            console.log('   Duração invencibilidade:', this.iframes_duracao, 's');
+
+            // Ativa invencibilidade
+            this._invencivel = true;
+            this._tempoInvencivel = 0;
+            this._tempoPiscar = 0;
+
+            // Toca animação de hit (se existir)
+            const sprite = this.entidade.obterComponente('SpriteComponent');
+            if (sprite && sprite.animacoes && sprite.animacoes[this.hit_animacao]) {
+                sprite.play(this.hit_animacao);
+                this._tocandoHit = true;
+                this._tempoHit = 0;
+                console.log('💥 Tocando animação:', this.hit_animacao);
+            } else if (sprite) {
+                // Se não tem animação de hit, apenas pisca vermelho
+                sprite.flashing = true;
+                sprite.flashDuration = 0.2;
+            }
+
+            // Procura o StatsRPG para aplicar o dano
+            let danoAplicado = false;
+            for (const [tipo, comp] of this.entidade.componentes.entries()) {
+                if (comp.tipo === 'ScriptComponent' && comp.instance) {
+                    const nome = comp.instance.constructor.name;
+
+                    if (nome === 'StatsRPG' && comp.instance.receberDano) {
+                        comp.instance.receberDano(quantidade);
+                        danoAplicado = true;
+                        break;
+                    }
+                }
+            }
+
+            // Se não encontrou StatsRPG, aplica dano direto no HP
+            if (!danoAplicado && this.entidade.hp !== undefined) {
+                this.entidade.hp -= quantidade;
+                console.log('   HP:', this.entidade.hp);
+            }
+
+            return quantidade;
+        }
+
+        obterEstado() { return this.estado; }
+
+        detectarParedes() {
+            const tilemapComp = this.entidade.engine.entidades.find(e => e.obterComponente('TilemapComponent'));
+            if (!tilemapComp) return;
+
+            const tilemap = tilemapComp.obterComponente('TilemapComponent');
+            const tileSize = tilemap.tileSize * tilemap.scale;
+
+            const bounds = this.entidade.obterComponente('CollisionComponent').bounds;
+
+            // Resetar flags
+            this.paredeEsq = false;
+            this.paredeDir = false;
+
+            // SENSOR CENTRAL (A solução V5)
+            // Ignora a cabeça e os pés para não colidir com emendas de chão/teto
+            const sensorMarginY = 8;
+            const sensorTop = bounds.y + sensorMarginY;
+            const sensorBottom = bounds.y + bounds.h - sensorMarginY;
+            const sensorLeft = bounds.x - 2; // Olha 2px pra esquerda
+            const sensorRight = bounds.x + bounds.w + 2; // Olha 2px pra direita
+
+            // Grid range (Otimização)
+            const startCol = Math.floor((bounds.x - tileSize) / tileSize);
+            const endCol = Math.floor((bounds.x + bounds.w + tileSize) / tileSize);
+            const startRow = Math.floor(sensorTop / tileSize);
+            const endRow = Math.floor(sensorBottom / tileSize);
+
+            for (let r = startRow; r <= endRow; r++) {
+                for (let c = startCol; c <= endCol; c++) {
+                    const tile = tilemap.getTile(c, r);
+                    if (!tile || !tile.wall) continue; // SÓ ACEITA 'isWall'
+
+                    const tileX = tilemapComp.x + c * tileSize;
+                    const tileY = tilemapComp.y + r * tileSize;
+                    const tileW = tileSize;
+                    const tileH = tileSize;
+
+                    // AABB Check contra o Sensor
+                    const overlapsY = (sensorTop < tileY + tileH && sensorBottom > tileY);
+                    if (!overlapsY) continue;
+
+                    // Check Esquerda
+                    if (tileX + tileW > sensorLeft && tileX < bounds.x) {
+                        this.paredeEsq = true;
+                    }
+
+                    // Check Direita
+                    if (tileX < sensorRight && tileX + tileW > bounds.x + bounds.w) {
+                        this.paredeDir = true;
+                    }
+                }
+            }
+        }
+    }
 `;
+        console.error('=== FULL GENERATED SCRIPT ===');
+        console.error(scriptCode);
+        console.error('=== END FULL SCRIPT ===');
+
+        // Try to find the syntax error
+        try {
+            new Function(scriptCode);
+            console.log('✅ Script syntax is valid!');
+        } catch (e) {
+            console.error('❌ SYNTAX ERROR IN GENERATED SCRIPT:', e.message);
+            console.error('Error at:', e.stack);
+
+            // Show lines around potential error
+            const lines = scriptCode.split('\n');
+            console.error('Total lines:', lines.length);
+            console.error('Line 40:', lines[39]);
+            console.error('Line 41:', lines[40]);
+            console.error('Line 42:', lines[41]);
+        }
+
+        return scriptCode;
     }
 
-
-
     /**
-     * Gera script genérico
-     */
+         * Gera script genérico
+         */
     gerarGenerico(info) {
         return `/**
  * Script de ${info.nome}
@@ -1574,7 +2058,7 @@ class InteractionScript {
         this.cooldown = 0;
         this.tempoExibicao = 2.0; // Intervalo para mostrar novamente
         this.apenasUmaVez = false; // Se true, exibe apenas a primeira vez
-        
+
         // Estado Interno
         this.jaExecutou = false;
     }
@@ -1597,31 +2081,31 @@ class InteractionScript {
             const dx = this.player.x - this.entidade.x;
             const dy = this.player.y - this.entidade.y;
             // Distância ao quadrado é mais rápido (3600 = 60px * 60px)
-            const distSq = dx*dx + dy*dy; 
-            
-            if (distSq < 3600) { 
-                 const dialogueComp = this.entidade.obterComponente('DialogueComponent');
-                 
-                 // Monitora estado do diálogo para aplicar Cooldown ao final
-                 if (dialogueComp) {
-                     if (dialogueComp.ativo) {
-                         this.dialogoEstavaAtivo = true;
-                         return; // Enquanto fala, não faz nada
-                     } else if (this.dialogoEstavaAtivo) {
-                         // Acabou de fechar? Aplica cooldown para não reabrir na hora
-                         this.dialogoEstavaAtivo = false;
-                         this.cooldown = 2.0; // Espera 2 segundos
-                         return;
-                     }
-                 }
+            const distSq = dx * dx + dy * dy;
 
-                 // Só ativa se o diálogo AINDA NÃO estiver ativo e sem cooldown
-                 if (dialogueComp && !dialogueComp.ativo && this.cooldown <= 0) {
-                     this.mostrarMensagem();
-                 } else if (!dialogueComp && this.cooldown <= 0) {
-                     // Fallback para texto flutuante
-                     this.mostrarMensagem();
-                 }
+            if (distSq < 3600) {
+                const dialogueComp = this.entidade.obterComponente('DialogueComponent');
+
+                // Monitora estado do diálogo para aplicar Cooldown ao final
+                if (dialogueComp) {
+                    if (dialogueComp.ativo) {
+                        this.dialogoEstavaAtivo = true;
+                        return; // Enquanto fala, não faz nada
+                    } else if (this.dialogoEstavaAtivo) {
+                        // Acabou de fechar? Aplica cooldown para não reabrir na hora
+                        this.dialogoEstavaAtivo = false;
+                        this.cooldown = 2.0; // Espera 2 segundos
+                        return;
+                    }
+                }
+
+                // Só ativa se o diálogo AINDA NÃO estiver ativo e sem cooldown
+                if (dialogueComp && !dialogueComp.ativo && this.cooldown <= 0) {
+                    this.mostrarMensagem();
+                } else if (!dialogueComp && this.cooldown <= 0) {
+                    // Fallback para texto flutuante
+                    this.mostrarMensagem();
+                }
             }
         }
     }
@@ -1663,7 +2147,7 @@ class InteractionScript {
         if (this.entidade.obterComponentesPorTipo) {
             scripts = this.entidade.obterComponentesPorTipo('ScriptComponent');
         } else {
-             // Fallback rudimentar se não atualizou Entidade.js
+            // Fallback rudimentar se não atualizou Entidade.js
             for (const c of this.entidade.componentes.values()) {
                 if (c.tipo === 'ScriptComponent') scripts.push(c);
             }
@@ -1843,11 +2327,7 @@ class DeathScreenScript {
         this.opacity = 0;
         this.state = 'fadingIn';
 
-        // Tenta pausar a entidade para evitar que ela caia no infinito?
-        // Mas se pausar, o update deste script roda? NÃO SE ele for componente da entidade!
-        // IMPORTANTE: Este script deve continuar rodando.
-        // Se a entidade for pausada, os componentes param.
-        // O KillZone geralmente teleporta o player. Se não teleportou, ele cai.
+        // Tenta pausar o player. Se não teleportou, ele cai.
         // Vamos deixar a física rolar ou travar a gravidade?
         // Travar gravidade temporariamente:
         this._salvoGravidade = this.entidade.gravidade;
@@ -1983,7 +2463,7 @@ class DeathScreenScript {
         for (const [tipo, comp] of this.entidade.componentes.entries()) {
             if (comp.tipo === 'ScriptComponent' && comp.instance) {
                 const nome = comp.instance.constructor.name;
-                
+
                 if (nome === 'MovimentacaoPlataformaScript') {
                     // Reseta estado de morte
                     comp.instance._morto = false;
@@ -1993,13 +2473,13 @@ class DeathScreenScript {
                 }
             }
         }
-        
+
         // Restaura HP do jogador
         if (this.entidade.hp !== undefined) {
             this.entidade.hp = this.entidade.hpMax || 100;
             console.log('❤️ HP restaurado:', this.entidade.hp);
         }
-        
+
         // Volta para animação idle
         const sprite = this.entidade.obterComponente('SpriteComponent');
         if (sprite) {
@@ -2059,73 +2539,76 @@ class DeathScreenScript {
      */
     gerarScriptAtaqueMelee() {
         return `/**
- * Script de Combate Melee
- * Controla ataque com cooldown e colisão por área (Hitbox).
- * As variáveis abaixo (hitboxX, etc) aparecem no editor para ajuste fino.
+ * Script de Combate Melee com Slide Attack
+ * Controla ataque normal e slide attack com cooldown e hitbox.
+ * Slide Attack: Pressione DOWN (S/ArrowDown) + Attack
  */
 
 class CombateMeleeScript {
     constructor(entidade) {
         this.entidade = entidade;
-        
+
         // Estado Interno
         this.atacando = false;
-        this.tempoDecorrido = 0; // Tempo desde o inicio do ataque
-        
-        // --- CONFIGURAÇÕES DO ATAQUE ---
-        // Ajuste estes valores no Painel de Propriedades!
-        
-        this.teclaAtaque = 'Control';  // Tecla para atacar
-        this.animAttack = 'attack';    // Nome da animação de ataque
-        this.cooldownAtaque = 0.5;     // Tempo antes de atacar novamente
-        
-        // === TIMING DO ATAQUE ===
-        // Configure quando a hitbox aparece durante a animação
-        this.inicioHitbox = 0.1;      // Delay (segundos) antes da hitbox ativar
-        this.duracaoHitbox = 0.2;     // Quanto tempo a hitbox fica ativa (segundos)
+        this.slideAtacando = false;
+        this.tempoDecorrido = 0;
 
-        // === HITBOX (Área de Colisão) ===
-        // Ajuste fino da área que causa dano
-        this.hitboxX = 30;   // Distância à frente do personagem (pixels)
-        this.hitboxY = 0;    // Deslocamento vertical (0=centro, negativo=sobe, positivo=desce)
-        this.hitboxW = 40;   // Largura da área de ataque
-        this.hitboxH = 40;   // Altura da área de ataque
-        
+        // --- ATAQUE NORMAL ---
+        this.teclaAtaque = 'Control';
+        this.animAttack = 'attack';
+        this.duracaoAtaque = 0.8;
+        this.cooldownAtaque = 0.5;
+
+        // --- SLIDE ATTACK ---
+        this.animSlide = 'slide';      // Nome da animação de slide
+        this.slideVelocity = 400;       // Velocidade do slide (px/s)
+        this.slideDuration = 1.5;       // Duração do slide (s)
+
+        // === TIMING DO ATAQUE ===
+        this.inicioHitbox = 0.1;
+        this.duracaoHitbox = 0.2;
+
+        // === HITBOX ===
+        this.hitboxX = 30;
+        this.hitboxY = 0;
+        this.hitboxW = 40;
+        this.hitboxH = 40;
+
         // === DEBUG ===
         // @type boolean
-        // DICA: Mude para false ou 0 para desativar o retângulo vermelho
         this.mostrarDebugHitbox = true;
 
         // Controle
         this.inimigosAtingidos = new Set();
         this.foiPressionado = false;
         this.tempoCooldown = 0;
+        this.slideDirection = 1;
     }
 
     iniciar() {
-        // Converte qualquer valor para boolean (aceita: true, "true", 1, "1", etc)
         const valor = String(this.mostrarDebugHitbox).toLowerCase().trim();
         this.mostrarDebugHitbox = (valor === 'true' || valor === '1' || valor === 'yes' || valor === 'sim');
-        
         console.log('🐛 [Debug Hitbox]:', this.mostrarDebugHitbox ? 'ATIVADO' : 'DESATIVADO');
     }
 
     processarInput(input) {
-        // Reduz cooldown
-        if (this.tempoCooldown > 0) { // Simulação, na real atualizar chama isso
-            // Manter lógica no atualizar
-        }
-
         const tecla = this.teclaAtaque || 'Control';
         const pressionadoAgora = input.teclaPressionada(tecla) ||
             input.teclaPressionada('z') ||
             input.teclaPressionada('Z') ||
             input.teclaPressionada('Control');
 
-        // Lógica "Just Pressed"
+        const downPressed = input.teclaPressionada('s') ||
+            input.teclaPressionada('S') ||
+            input.teclaPressionada('ArrowDown');
+
         if (pressionadoAgora) {
             if (!this.foiPressionado) {
-                this.tentarAtacar();
+                if (downPressed) {
+                    this.tentarSlideAttack();
+                } else {
+                    this.tentarAtacar();
+                }
                 this.foiPressionado = true;
             }
         } else {
@@ -2134,8 +2617,13 @@ class CombateMeleeScript {
     }
 
     tentarAtacar() {
-        if (this.atacando || this.tempoCooldown > 0) return;
+        if (this.atacando || this.slideAtacando || this.tempoCooldown > 0) return;
         this.iniciarAtaque();
+    }
+
+    tentarSlideAttack() {
+        if (this.atacando || this.slideAtacando || this.tempoCooldown > 0) return;
+        this.iniciarSlideAttack();
     }
 
     iniciarAtaque() {
@@ -2143,73 +2631,103 @@ class CombateMeleeScript {
         this.tempoDecorrido = 0;
         this.tempoCooldown = this.cooldownAtaque;
         this.inimigosAtingidos.clear();
-
         console.log('⚔️ Ataque Iniciado!');
-
         const sprite = this.entidade.obterComponente('SpriteComponent');
         if (sprite) {
             console.log('   🎬 Tocando animação:', this.animAttack);
             sprite.play(this.animAttack);
-        } else {
-            console.warn('   ⚠️ SpriteComponent não encontrado!');
         }
     }
 
-    /**
-     * Retorna se o personagem está ocupado (atacando)
-     * Scripts de movimento devem verificar isso antes de mudar animações!
-     */
+    iniciarSlideAttack() {
+        this.slideAtacando = true;
+        this.tempoDecorrido = 0;
+        this.tempoCooldown = this.cooldownAtaque;
+        this.inimigosAtingidos.clear();
+        const sprite = this.entidade.obterComponente('SpriteComponent');
+        this.slideDirection = (sprite && sprite.inverterX) ? -1 : 1;
+        console.log('🏃 Slide Attack! Dir:', this.slideDirection > 0 ? 'DIREITA' : 'ESQUERDA');
+        
+        // CRITICAL FIX: Ensure slide animation image is preloaded
+        if (sprite) {
+            const slideAnim = sprite.animacoes[this.animSlide];
+            if (slideAnim && slideAnim.source) {
+                // Ensure imageCache exists
+                if (!sprite.imageCache) sprite.imageCache = {};
+                
+                // Preload image if not in cache
+                if (!sprite.imageCache[slideAnim.source]) {
+                    const img = new Image();
+                    img.src = slideAnim.source;
+                    sprite.imageCache[slideAnim.source] = img;
+                    slideAnim._runtimeImage = img;
+                }
+            }
+            sprite.play(this.animSlide);
+        }
+    }
+
     estaOcupado() {
-        return this.atacando;
+        return this.atacando || this.slideAtacando;
     }
 
     atualizar(deltaTime) {
-        // Força conversão do debug flag toda vez (caso o valor seja alterado no editor)
         if (typeof this.mostrarDebugHitbox === 'string') {
             const valor = this.mostrarDebugHitbox.toLowerCase().trim();
             this.mostrarDebugHitbox = (valor === 'true' || valor === '1' || valor === 'yes' || valor === 'sim');
         }
-        
-        // Atualiza Cooldown global
+
         if (this.tempoCooldown > 0) {
             this.tempoCooldown -= deltaTime;
         }
 
-        if (!this.atacando) return;
-
-        const sprite = this.entidade.obterComponente('SpriteComponent');
-        
-        // FORÇA attack se o movimento mudou para idle/walk
-        if (sprite && sprite.animacaoAtual !== this.animAttack) {
-            console.log('   ⚠️ Animação foi sobrescrita para:', sprite.animacaoAtual, '- Forçando de volta para attack');
-            sprite.play(this.animAttack);
-        }
-        
-        // Avança tempo do ataque
-        this.tempoDecorrido += deltaTime;
-        
-        // TIMEOUT DE SEGURANÇA: Se passou o cooldown, força fim do ataque
-        // Isso evita o bug de ficar preso atacando se a animação tem loop=true
-        if (this.tempoDecorrido >= this.cooldownAtaque) {
-            this.atacando = false;
-            console.log('⚔️ Ataque Completo! (Timeout)');
+        if (this.slideAtacando) {
+            this.atualizarSlideAttack(deltaTime);
             return;
         }
-        
-        // Verifica se a animação de ataque completou (para animações sem loop)
+
+        if (this.atacando) {
+            this.atualizarAtaqueNormal(deltaTime);
+            return;
+        }
+    }
+
+    atualizarAtaqueNormal(deltaTime) {
+        this.tempoDecorrido += deltaTime;
+
+        if (this.tempoDecorrido >= this.duracaoAtaque) {
+            this.atacando = false;
+            console.log('⚔️ Ataque Completo!');
+            return;
+        }
+
+        const sprite = this.entidade.obterComponente('SpriteComponent');
         if (sprite && sprite.animacaoCompleta && sprite.animacaoCompleta()) {
             this.atacando = false;
             console.log('⚔️ Ataque Completo!');
             return;
         }
 
-        // Verifica janela ativa da hitbox
-        const hitboxAtiva = (this.tempoDecorrido >= this.inicioHitbox) && 
-                            (this.tempoDecorrido <= (this.inicioHitbox + this.duracaoHitbox));
+        const hitboxAtiva = (this.tempoDecorrido >= this.inicioHitbox) &&
+            (this.tempoDecorrido <= (this.inicioHitbox + this.duracaoHitbox));
 
         if (hitboxAtiva) {
             this.verificarColisao();
         }
+    }
+
+    atualizarSlideAttack(deltaTime) {
+        this.tempoDecorrido += deltaTime;
+        this.entidade.velocidadeX = this.slideDirection * this.slideVelocity;
+
+        if (this.tempoDecorrido >= this.slideDuration) {
+            this.slideAtacando = false;
+            this.entidade.velocidadeX = 0;
+            console.log('🏃 Slide Completo!');
+            return;
+        }
+
+        this.verificarColisao();
     }
 
     verificarColisao() {
@@ -2218,17 +2736,17 @@ class CombateMeleeScript {
 
         // Calcula posição da Hitbox baseada nos valores editáveis
         const offX = invertido ? (-this.hitboxX - this.hitboxW) : this.hitboxX;
-        
+
         // Coordenadas Absolutas
         // X: Centro da entidade + Offset ajustado (para virar com o personagem)
         // Y: Centro da entidade + Offset Y manual - Metade da altura da hitbox (para centralizar no ponto Y)
         const areaAtaque = {
-            x: this.entidade.x + (this.entidade.largura / 2) + offX, 
+            x: this.entidade.x + (this.entidade.largura / 2) + offX,
             y: this.entidade.y + (this.entidade.altura / 2) + this.hitboxY - (this.hitboxH / 2),
             w: this.hitboxW,
             h: this.hitboxH
         };
-        
+
         // Ajuste: Se invertido, o "Centro + OffX" já joga pra esquerda.
         // Se usar a borda como referência é mais intuitivo? 
         // Vamos manter referência ao CENTRO da entidade para ser simétrico.
@@ -2239,9 +2757,9 @@ class CombateMeleeScript {
                 if (outra === this.entidade) return;
 
                 // Identifica Inimigos
-                const ehInimigo = outra.nome.toLowerCase().includes('inimigo') || 
-                                  outra.nome.toLowerCase().includes('enemy') ||
-                                  outra.tipo === 'inimigo';
+                const ehInimigo = outra.nome.toLowerCase().includes('inimigo') ||
+                    outra.nome.toLowerCase().includes('enemy') ||
+                    outra.tipo === 'inimigo';
 
                 if (ehInimigo && !this.inimigosAtingidos.has(outra.id)) {
                     if (this.colisaoAABB(areaAtaque, outra)) {
@@ -2292,35 +2810,23 @@ class CombateMeleeScript {
     }
 
     renderizar(ctx) {
-        // Só desenha se estiver na janela ativa da hitbox
-        const hitboxAtiva = (this.tempoDecorrido >= this.inicioHitbox) && 
-                            (this.tempoDecorrido <= (this.inicioHitbox + this.duracaoHitbox));
+        const hitboxAtiva = this.slideAtacando ||
+            ((this.tempoDecorrido >= this.inicioHitbox) &&
+             (this.tempoDecorrido <= (this.inicioHitbox + this.duracaoHitbox)));
 
-        if (this.atacando && hitboxAtiva) {
+        if ((this.atacando || this.slideAtacando) && hitboxAtiva && this.mostrarDebugHitbox) {
             const sprite = this.entidade.obterComponente('SpriteComponent');
             const invertido = sprite ? sprite.inverterX : false;
-            
             const offX = invertido ? (-this.hitboxX - this.hitboxW) : this.hitboxX;
-            
             const drawX = this.entidade.x + (this.entidade.largura / 2) + offX;
             const drawY = this.entidade.y + (this.entidade.altura / 2) + this.hitboxY - (this.hitboxH / 2);
 
-            // Debug Hitbox (Ativado pela flag mostrarDebugHitbox)
-            // LOG: Mostra o tipo e valor da flag
-            if (!this._debugLogMostrado) {
-                console.log('🐛 [Renderizar] mostrarDebugHitbox =', this.mostrarDebugHitbox, '(tipo:', typeof this.mostrarDebugHitbox + ')');
-                this._debugLogMostrado = true;
-            }
-            
-            if (this.mostrarDebugHitbox) {
-                ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
-                ctx.fillRect(drawX, drawY, this.hitboxW, this.hitboxH);
-                
-                // Borda
-                ctx.strokeStyle = 'red';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(drawX, drawY, this.hitboxW, this.hitboxH);
-            }
+            ctx.fillStyle = this.slideAtacando ? 'rgba(0,255,255,0.3)' : 'rgba(255,0,0,0.3)';
+            ctx.fillRect(drawX, drawY, this.hitboxW, this.hitboxH);
+
+            ctx.strokeStyle = this.slideAtacando ? 'cyan' : 'red';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(drawX, drawY, this.hitboxW, this.hitboxH);
         }
     }
 }`;
@@ -2627,7 +3133,22 @@ class CombateMeleeScript {
         this.entidade.mana = this.manaMax;
         this.entidade.manaMax = this.manaMax;
         
-        console.log('⭐ [StatsRPG] Constructor - HP definido:', this.entidade.hp);
+        // Inicializa Level/XP para funcionar no Editor
+        if (this.usarLevel) {
+            this.entidade.level = this.levelInicial;
+            this.entidade.xp = 0;
+            this.entidade.xpProximo = this.xpParaProximoLevel;
+        }
+
+        // EXPOR MÉTODOS PÚBLICOS NA ENTIDADE
+        // Isso permite que outros scripts chamem player.ganharXP(10)
+        this.entidade.ganharXP = this.ganharXP.bind(this);
+        this.entidade.receberDano = this.receberDano.bind(this);
+        this.entidade.curar = this.curar.bind(this);
+        this.entidade.gastarMana = this.gastarMana.bind(this);
+        this.entidade.restaurarMana = this.restaurarMana.bind(this);
+
+        console.log('⭐ [StatsRPG] Constructor - Stats definidos e API exposta');
     }
 
     iniciar() {

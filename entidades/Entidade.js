@@ -286,6 +286,7 @@ class Entidade {
         return {
             id: this.id,
             nome: this.nome,
+            tipo: this.tipo,
             x: this.x,
             y: this.y,
             largura: this.largura,
@@ -307,13 +308,13 @@ class Entidade {
      */
     static desserializar(dados) {
         const entidade = new Entidade(
-
             dados.id,
             dados.nome,
             dados.x,
             dados.y
         );
 
+        entidade.tipo = dados.tipo || 'objeto'; // Restaura o tipo
         entidade.largura = dados.largura || 32;
         entidade.altura = dados.altura || 32;
         entidade.rotacao = dados.rotacao || 0;

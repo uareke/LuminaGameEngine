@@ -39,6 +39,9 @@ export class SpriteComponent {
 
         // Autoplay
         this.autoplayAnim = ''; // Nome da animação para iniciar automaticamente
+
+        // Repetição (Tiled)
+        this.tiled = false;
     }
 
     /**
@@ -579,14 +582,43 @@ export class SpriteComponent {
             }
         }
 
+        // OVERRIDE FOR TILED: Se for Tiled, usa tamanho nativo do frame (ajustado por escala)
+        if (this.tiled) {
+            drawWidth = sw * Math.abs(this.scaleX || 1);
+            drawHeight = sh * Math.abs(this.scaleY || 1);
+        }
+
         try {
-            ctx.drawImage(
-                imgToDraw,
-                sx, sy, sw, sh,
-                -drawWidth / 2 + offsetX,
-                -drawHeight / 2 + offsetY,
-                drawWidth, drawHeight
-            );
+            if (this.tiled) {
+                // Tiled Rendering (Repetição)
+                const startX = -largura / 2;
+                const startY = -altura / 2;
+                const cols = Math.ceil(largura / drawWidth);
+                const rows = Math.ceil(altura / drawHeight);
+
+                for (let cy = 0; cy < rows; cy++) {
+                    for (let cx = 0; cx < cols; cx++) {
+                        // Opcional: Cortar o tile se passar da borda (clipping)
+                        // Por enquanto desenha inteiro
+                        ctx.drawImage(
+                            imgToDraw,
+                            sx, sy, sw, sh,
+                            startX + (cx * drawWidth) + offsetX,
+                            startY + (cy * drawHeight) + offsetY,
+                            drawWidth, drawHeight
+                        );
+                    }
+                }
+            } else {
+                // Desenho Normal (Centralizado)
+                ctx.drawImage(
+                    imgToDraw,
+                    sx, sy, sw, sh,
+                    -drawWidth / 2 + offsetX,
+                    -drawHeight / 2 + offsetY,
+                    drawWidth, drawHeight
+                );
+            }
             ctx.restore();
             return true; // Desenhou com sucesso
         } catch (e) {
@@ -611,7 +643,8 @@ export class SpriteComponent {
             scaleY: this.scaleY,
             offsetX: this.offsetX,
             offsetY: this.offsetY,
-            autoplayAnim: this.autoplayAnim
+            autoplayAnim: this.autoplayAnim,
+            tiled: this.tiled
         };
     }
 
@@ -630,7 +663,9 @@ export class SpriteComponent {
         this.scaleY = cfg.scaleY !== undefined ? cfg.scaleY : 1.0;
         this.offsetX = cfg.offsetX || 0;
         this.offsetY = cfg.offsetY || 0;
+        this.offsetY = cfg.offsetY || 0;
         this.autoplayAnim = cfg.autoplayAnim || '';
+        this.tiled = !!cfg.tiled;
 
         // Set assetId last to trigger load
         if (cfg.assetId) {

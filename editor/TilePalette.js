@@ -43,6 +43,38 @@ export class TilePalette {
             }
         }
 
+        // CheckBox Wall (Paredes para Wall Slide)
+        this.checkWall = document.getElementById('chk-tile-isWall');
+        if (!this.checkWall) {
+            const container = this.infoSpan ? this.infoSpan.parentElement : null;
+            if (container) {
+                const label = document.createElement('label');
+                label.style.marginLeft = '10px';
+                label.style.fontSize = '12px';
+                label.style.color = '#ff7675'; // Vermelho claro
+                label.title = 'Permite Wall Slide/Wall Jump';
+                label.innerHTML = '<input type="checkbox" id="chk-tile-isWall"> Slide';
+                container.appendChild(label);
+                this.checkWall = label.querySelector('input');
+            }
+        }
+
+        // CheckBox Ground (Chão Seguro)
+        this.checkGround = document.getElementById('chk-tile-isGround');
+        if (!this.checkGround) {
+            const container = this.infoSpan ? this.infoSpan.parentElement : null;
+            if (container) {
+                const label = document.createElement('label');
+                label.style.marginLeft = '10px';
+                label.style.fontSize = '12px';
+                label.style.color = '#55efc4'; // Verde claro
+                label.title = 'Chão firme (Sem slide)';
+                label.innerHTML = '<input type="checkbox" id="chk-tile-isGround"> Chão';
+                container.appendChild(label);
+                this.checkGround = label.querySelector('input');
+            }
+        }
+
         // Seletor de Camada (Target Layer)
         this.selectLayer = document.getElementById('tile-target-layer');
         if (!this.selectLayer) {
@@ -96,6 +128,8 @@ export class TilePalette {
         this.selectedTile = null; // { col, row, index }
         this.isSolid = false;
         this.isPlat = false;
+        this.isWall = false;
+        this.isGround = false;
         this.zoom = 1.0;
 
         // Armazenar último clique para Shift-Select
@@ -125,6 +159,30 @@ export class TilePalette {
                 this.isPlat = this.checkPlat.checked;
                 if (this.selectedTile) {
                     this.selectedTile.plataforma = this.isPlat;
+                    this.editor.ativarFerramentaBrush(this.selectedTile);
+                }
+            });
+        }
+
+        // Setup Checkbox Wall
+        if (this.checkWall) {
+            this.checkWall.checked = this.isWall;
+            this.checkWall.addEventListener('change', () => {
+                this.isWall = this.checkWall.checked;
+                if (this.selectedTile) {
+                    this.selectedTile.wall = this.isWall;
+                    this.editor.ativarFerramentaBrush(this.selectedTile);
+                }
+            });
+        }
+
+        // Setup Checkbox Ground
+        if (this.checkGround) {
+            this.checkGround.checked = this.isGround;
+            this.checkGround.addEventListener('change', () => {
+                this.isGround = this.checkGround.checked;
+                if (this.selectedTile) {
+                    this.selectedTile.ground = this.isGround;
                     this.editor.ativarFerramentaBrush(this.selectedTile);
                 }
             });
@@ -415,7 +473,11 @@ export class TilePalette {
                     assetId: this.currentAsset.id,
                     sheetWidth: this.currentAsset.elemento.width,
                     solid: this.isSolid,
-                    plataforma: this.isPlat
+                    sheetWidth: this.currentAsset.elemento.width,
+                    solid: this.isSolid,
+                    plataforma: this.isPlat,
+                    wall: this.isWall,
+                    ground: this.isGround
                 };
 
                 console.log(`[TilePalette] Big Brush: ${cols}x${rows}`);
@@ -433,7 +495,11 @@ export class TilePalette {
                     assetId: this.currentAsset.id,
                     sheetWidth: this.currentAsset.elemento.width,
                     solid: this.isSolid,
-                    plataforma: this.isPlat
+                    sheetWidth: this.currentAsset.elemento.width,
+                    solid: this.isSolid,
+                    plataforma: this.isPlat,
+                    wall: this.isWall,
+                    ground: this.isGround
                 };
             }
 

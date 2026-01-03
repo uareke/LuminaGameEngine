@@ -6,6 +6,7 @@ class TilemapComponent {
         this.bloqueado = false; // Se true, não permite edição
 
         this.tileSize = 32;
+        this.scale = 1.0; // Escala manual do Tilemap
         this.tiles = {}; // Map "x,y" -> assetId
 
         // Cache de renderização (Opcional por enquanto)
@@ -101,14 +102,17 @@ class TilemapComponent {
             // Se w/h não existirem no data, assumimos tileSize do mapa ou será pego da imagem depois
             // Mas idealmente o tileData vem do Palette com w/h
 
-            // Posição no Mundo (O Contexto JÁ ESTÁ transformado pela câmera via EditorPrincipal)
-            const worldX = startX + (gx * this.tileSize);
-            const worldY = startY + (gy * this.tileSize);
+            // Escala Manual
+            const currentScale = this.scale || 1.0;
+            const size = this.tileSize * currentScale;
 
-            // Coordenadas para desenho (São as próprias coordenadas do mundo)
+            // Posição no Mundo (Ajustada pela escale)
+            const worldX = startX + (gx * size);
+            const worldY = startY + (gy * size);
+
+            // Coordenadas para desenho
             const drawX = worldX;
             const drawY = worldY;
-            const size = this.tileSize; // Zoom já é aplicado pelo ctx.scale
 
             // Culling simples (Otimização)
             // Aqui PRECISAMOS da câmera para saber se está na tela, mas calculando o inverso
@@ -152,9 +156,12 @@ class TilemapComponent {
                 ctx.fillRect(drawX, drawY, size, size);
             }
 
-            // GIZMO: Solid Collision (Visualizar colisores)
+            // GIZMO: Solid Collision (Visualizar colisores) e Labels
             if (debugMode) {
                 const isSolid = (typeof tileData === 'object' && tileData.solid);
+                const isWall = (typeof tileData === 'object' && tileData.wall);
+                const isGround = (typeof tileData === 'object' && tileData.ground);
+
                 if (isSolid) {
                     // Overlay vermelho semi-transparente
                     ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
@@ -163,6 +170,33 @@ class TilemapComponent {
                     ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
                     ctx.lineWidth = 1;
                     ctx.strokeRect(drawX, drawY, size, size);
+                }
+
+                // Labels Visuais (W = Wall, G = Ground)
+                if (isWall || isGround) {
+                    ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.lineJoin = 'round';
+                    ctx.lineWidth = 3;
+
+                    if (isGround) {
+                        // G no Topo
+                        const gY = drawY + size * 0.25;
+                        ctx.strokeStyle = 'black';
+                        ctx.strokeText('G', drawX + size / 2, gY);
+                        ctx.fillStyle = '#00FF00'; // Verde
+                        ctx.fillText('G', drawX + size / 2, gY);
+                    }
+
+                    if (isWall) {
+                        // W na Base
+                        const wY = drawY + size * 0.75;
+                        ctx.strokeStyle = 'black';
+                        ctx.strokeText('W', drawX + size / 2, wY);
+                        ctx.fillStyle = '#00FFFF'; // Ciano
+                        ctx.fillText('W', drawX + size / 2, wY);
+                    }
                 }
             }
         }
@@ -190,6 +224,7 @@ class TilemapComponent {
             tipo: this.tipo,
             ativo: this.ativo,
             tileSize: this.tileSize,
+            scale: this.scale,
             tiles: this.tiles // Serializa o objeto mapa direto
         };
     }
@@ -197,6 +232,7 @@ class TilemapComponent {
     desserializar(dados) {
         this.ativo = dados.ativo;
         this.tileSize = dados.tileSize || 32;
+        this.scale = dados.scale !== undefined ? dados.scale : 1.0;
         this.tiles = dados.tiles || {};
     }
 }
