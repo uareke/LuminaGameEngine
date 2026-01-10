@@ -39,6 +39,7 @@ export class EntidadeFactory {
         switch (tipo) {
             case 'player':
                 entidade.nome = 'Player';
+                entidade.tags = ['player']; // Adicionando tag explícita
                 entidade.cor = '#ff0055'; // Vermelho/Rosa Vibrante
                 // Player geralmente tem Sprite e Física
                 entidade.adicionarComponente('SpriteComponent', new SpriteComponent());

@@ -5,9 +5,9 @@
     "main": "main.js",
     "type": "module",
     "scripts": {
-        "start": "npx http-server -p 8000",
-        "dev": "npx http-server -p 8000 -o",
-        "test": "echo \"No tests specified\" && exit 0"
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview"
     },
     "keywords": [
         "game-engine",
@@ -27,10 +27,7 @@
         "browser-game",
         "vanilla-javascript"
     ],
-    "author": {
-        "name": "Alex Sandro Martins de Araujo",
-        "email": "seu-email@exemplo.com"
-    },
+    "author": "Alex Sandro Martins de Araujo <seu-email@exemplo.com>",
     "license": "MIT",
     "repository": {
         "type": "git",
@@ -60,6 +57,11 @@
         "README.pt-BR.md",
         "LICENSE"
     ],
-    "devDependencies": {},
-    "dependencies": {}
+    "devDependencies": {
+        "vite": "^7.3.0",
+        "vite-plugin-static-copy": "^3.1.4"
+    },
+    "directories": {
+        "doc": "docs"
+    }
 }
