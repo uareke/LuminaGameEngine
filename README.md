@@ -136,6 +136,7 @@ Open `index.html` in a modern browser (recommended: Chrome, Firefox, Edge)
 - **[💡 Lighting System](docs/tecnica/LIGHTING_SYSTEM.md)** - 2D Lighting (Portuguese)
 - **[📜 Scripting](docs/04_scripting.md)** - Creating scripts (Portuguese)
 - **[🎬 Animations](docs/03_animacoes.md)** - Animation system (Portuguese)
+- **[🎒 Advanced Inventory UI](docs/ADVANCED_INVENTORY_UI.md)** - 9-Slice and grid system ([English](docs/ADVANCED_INVENTORY_UI.md) | [Português](docs/ADVANCED_INVENTORY_UI.pt-BR.md))
 
 > 📝 **Note**: Documentation is currently available in Portuguese. English translation coming soon!
 

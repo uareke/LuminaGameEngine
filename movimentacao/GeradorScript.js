@@ -17,7 +17,8 @@ class GeradorScript {
             'Morte com Animação': this.gerarScriptMorteAnimacao.bind(this),
             'Simulador de Morte': this.gerarScriptSimuladorMorte.bind(this),
             'Sistema de Respawn': this.gerarScriptRespawnInimigo.bind(this),
-            'Texto Flutuante': this.gerarScriptTextoFlutuante.bind(this)
+            'Texto Flutuante': this.gerarScriptTextoFlutuante.bind(this),
+            'Controlador de Inventário': this.gerarControladorInventario.bind(this)
         };
     }
 
@@ -3264,6 +3265,93 @@ class CombateMeleeScript {
         }
     }
 }`;
+    }
+
+    /**
+     * Gera script de Controle de Inventário (Toggle UI)
+     */
+    gerarControladorInventario() {
+        return `/**
+ * Controlador de Inventário v1.1
+ * Gerencia a visibilidade da janela de inventário
+ */
+class InventoryController {
+    constructor(entidade) {
+        this.entidade = entidade;
+        
+        // --- CONFIGURAÇÃO ---
+        this.teclaToggle = 'i'; // Tecla para abrir/fechar
+        this.comecarAberto = false;
+        
+        // Estado Interno
+        this.aberto = this.comecarAberto;
+        
+        // Inicialização
+        this.inicializarEstado();
+    }
+
+    inicializarEstado() {
+        const ui = this.obterUI();
+        
+        if (ui) {
+            ui.ativo = this.aberto;
+        } else {
+            console.warn('[InventoryController] ⚠️ Nenhuma UI de Inventário encontrada!\\nColoque este script na mesma entidade da UI, ou crie uma UI com elemento Inventário.');
+        }
+        
+        // Se a própria entidade for um fundo (Sprite), esconde também
+        if (this.entidade.temComponente && this.entidade.temComponente('SpriteComponent')) {
+            this.entidade.visivel = this.aberto;
+        }
+    }
+
+    // Helper inteligente para achar a UI
+    obterUI() {
+        // 1. Tenta pegar da própria entidade (o ideal)
+        let ui = this.entidade.obterComponente('UIComponent');
+        if (ui) return ui;
+
+        // 2. Fallback: Procura no mundo qualquer UI que tenha 'inventario'
+        if (this.entidade.engine) {
+            const entidadeComUI = this.entidade.engine.entidades.find(e => {
+                const comp = e.obterComponente('UIComponent');
+                // Verifica se tem algum elemento do tipo 'inventario' ou 'inventory'
+                return comp && comp.elementos && comp.elementos.some(el => el.tipo === 'inventario' || el.tipo === 'inventory');
+            });
+            
+            if (entidadeComUI) {
+                // console.log('[InventoryController] UI encontrada em outra entidade:', entidadeComUI.nome);
+                return entidadeComUI.obterComponente('UIComponent');
+            }
+        }
+        return null;
+    }
+
+    atualizar() {
+        if (!this.entidade.engine) return;
+
+        // Verifica tecla pressionada
+        if (this.entidade.engine.teclaPrecionadaAgora(this.teclaToggle)) {
+            this.toggle();
+        }
+    }
+
+    toggle() {
+        this.aberto = !this.aberto;
+        
+        // Atualiza UI
+        const ui = this.obterUI();
+        if (ui) ui.ativo = this.aberto;
+        
+        // Atualiza Sprite (Fundo)
+        if (this.entidade.temComponente && this.entidade.temComponente('SpriteComponent')) {
+            this.entidade.visivel = this.aberto;
+        }
+        
+        console.log('[Inventory] Estado:', this.aberto ? 'ABERTO' : 'FECHADO');
+    }
+}
+`;
     }
 }
 export default GeradorScript;

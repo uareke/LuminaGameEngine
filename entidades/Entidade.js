@@ -27,6 +27,7 @@ class Entidade {
         this.startY = y;
 
         this.componentes = new Map();
+        this.tags = []; // Tags para identificação (ex: 'player', 'inimigo')
 
         // Referência à engine/cena
         this.engine = null;
@@ -299,6 +300,7 @@ class Entidade {
             pastaId: this.pastaId,
             cor: this.cor,
             opacidade: this.opacidade,
+            tags: this.tags,
             componentes: componentesSerializados
         };
     }
@@ -325,6 +327,7 @@ class Entidade {
         entidade.pastaId = dados.pastaId;
         entidade.cor = dados.cor || '#ff00ff';
         entidade.opacidade = dados.opacidade !== undefined ? Number(dados.opacidade) : 1.0;
+        entidade.tags = dados.tags || [];
 
         // Spawn point
         entidade.startX = dados.x;

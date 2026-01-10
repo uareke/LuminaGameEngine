@@ -19,6 +19,8 @@ import KillZoneComponent from '../componentes/KillZoneComponent.js';
 import CheckpointComponent from '../componentes/CheckpointComponent.js';
 import { ParticleEmitterComponent } from '../componentes/ParticleEmitterComponent.js';
 import UIComponent from '../componentes/UIComponent.js';
+import InventoryComponent from '../componentes/InventoryComponent.js';
+import ItemComponent from '../componentes/ItemComponent.js';
 import GeradorScript from '../movimentacao/GeradorScript.js';
 import { EditorSpriteSheet } from './EditorSpriteSheet.js';
 import { EditorAnimation } from './EditorAnimation.js';
@@ -31,6 +33,7 @@ import LightComponent from '../componentes/LightComponent.js';
 import LightingSystem from '../sistemas/LightingSystem.js';
 import { LightingPresetManager } from './LightingPresetManager.js';
 import { EditorLighting } from './EditorLighting.js';
+import { HistoryManager, CmdMoveEntity, CmdCreateEntity, CmdDeleteEntity, CmdChangeProperty, CmdResizeEntity } from './HistoryManager.js';
 
 class EditorPrincipal {
     constructor(canvas) {
@@ -45,6 +48,7 @@ class EditorPrincipal {
         this.modoEdicao = true; // true = edição, false = play/teste
         this.entidades = [];
         this.entidadeSelecionada = null;
+        this.clipboard = null; // Para Copiar/Colar
         this.ferramentaAtiva = 'selecionar'; // selecionar, mover, rotacionar, escalar, brush
         this.tileData = null; // Dados do tile para pincel
 
@@ -86,8 +90,16 @@ class EditorPrincipal {
         this.lightingPresetManager = new LightingPresetManager();
         this.editorLighting = new EditorLighting(this);
 
+        // Sistema de Histórico (Undo/Redo)
+        this.history = new HistoryManager(this);
+
         // Expor AssetManager para a engine (para componentes acessarem imagens/sprites)
         this.engine.assetManager = this.assetManager;
+
+        // CRITICAL FIX: Ensure Renderizador has access to Engine (for UIComponent accessing assetManager)
+        if (this.engine.renderizador) {
+            this.engine.renderizador.engine = this.engine;
+        }
 
         // Expor componentes globalmente para uso em scripts e editor
         window.LightComponent = LightComponent;
@@ -253,6 +265,44 @@ class EditorPrincipal {
             e.stopPropagation();
             this.canvas.style.cursor = 'default';
 
+            // --- HANDLE ASSET DROP (INTERNAL) ---
+            try {
+                const dataStr = e.dataTransfer.getData('text/plain');
+                if (dataStr) {
+                    const data = JSON.parse(dataStr);
+                    if (data.tipo === 'asset_sprite') {
+                        const asset = this.assetManager.obterAsset(data.id);
+                        if (asset) {
+                            const worldPos = this.camera.telaParaMundo(e.offsetX, e.offsetY);
+
+                            // Create Entity (Sprite)
+                            const novaEnt = new Entidade(worldPos.x, worldPos.y, asset.width || 64, asset.height || 64);
+                            novaEnt.nome = asset.nome || 'Nova Entidade';
+
+                            // Add Sprite Component
+                            const sprite = new SpriteComponent();
+                            sprite.assetId = asset.id;
+                            sprite.atualizar(novaEnt, 0); // Setup dimensions
+                            novaEnt.adicionarComponente(sprite);
+
+                            // Register
+                            this.entidades.push(novaEnt);
+                            this.engine.adicionarEntidade(novaEnt);
+                            this.selecionarEntidade(novaEnt);
+
+                            // UNDO
+                            const cmd = new CmdCreateEntity(novaEnt);
+                            this.history.execute(cmd);
+
+                            this.atualizarHierarquia();
+                            this.atualizarContadorEntidades();
+                            this.log(`Entidade criada a partir de '${asset.nome}'`, 'success');
+                            return; // Stop processing (don't try as file)
+                        }
+                    }
+                }
+            } catch (err) { }
+
             const files = e.dataTransfer.files;
             if (files && files.length > 0) {
                 const file = files[0];
@@ -389,9 +439,34 @@ class EditorPrincipal {
         });
 
         // Botões de play/pause/stop
-        document.getElementById('btn-play')?.addEventListener('click', () => this.alternarModo());
-        document.getElementById('btn-pause')?.addEventListener('click', () => this.pausar());
-        document.getElementById('btn-stop')?.addEventListener('click', () => this.parar());
+        const btnPlay = document.getElementById('btn-play');
+        const btnPause = document.getElementById('btn-pause');
+        const btnStop = document.getElementById('btn-stop');
+
+        btnPlay?.addEventListener('click', () => this.alternarModo());
+        btnPause?.addEventListener('click', () => this.pausar());
+        btnStop?.addEventListener('click', () => this.parar());
+
+        // Injetar Botão de Debug se não existir
+        if (btnPlay && btnPlay.parentElement && !document.getElementById('btn-debug')) {
+            const btnDebug = document.createElement('button');
+            btnDebug.id = 'btn-debug';
+            btnDebug.className = 'btn-tool';
+            btnDebug.title = 'Mostrar Colisores (Debug)';
+            btnDebug.textContent = '🐞';
+            btnDebug.style.marginRight = '5px';
+            btnDebug.style.border = '1px solid #555';
+
+            // Inserir antes do Play
+            btnPlay.parentElement.insertBefore(btnDebug, btnPlay);
+
+            btnDebug.addEventListener('click', () => {
+                this.engine.debugMode = !this.engine.debugMode;
+                btnDebug.style.background = this.engine.debugMode ? '#e67e22' : '';
+                btnDebug.style.color = this.engine.debugMode ? 'white' : '';
+                this.log(`Modo Debug: ${this.engine.debugMode ? 'LIGADO' : 'DESLIGADO'}`, 'info');
+            });
+        }
 
         // Botões de salvar/exportar
         document.getElementById('btn-new')?.addEventListener('click', () => this.novoProjeto());
@@ -403,11 +478,65 @@ class EditorPrincipal {
         // Botão de Configurações da Cena (Cor de Fundo)
         document.getElementById('btn-scene-settings')?.addEventListener('click', () => this.abrirConfiguracoesCena());
 
+        // Botão Resetar Câmera
+        document.getElementById('btn-camera-reset')?.addEventListener('click', () => {
+            if (this.engine && this.engine.camera) {
+                this.engine.camera.x = 0;
+                this.engine.camera.y = 0;
+                // Opcional: Resetar Zoom
+                // this.engine.camera.zoom = 1; 
+                this.log('Câmera resetada para (0,0)', 'info');
+            }
+        });
+
         // Botão de Configurações
         const btnSettings = document.getElementById('btn-settings');
         const modalSettings = document.getElementById('modal-settings');
         const btnCloseSettings = document.getElementById('btn-close-settings');
         const btnApplySettings = document.getElementById('btn-apply-settings');
+
+        // INJECT COPY/PASTE BUTTONS (Toolbar Top)
+        // FIX: Usar seletor correto '.toolbar' baseado no index.html
+        const toolbar = document.querySelector('.toolbar');
+
+        if (toolbar && !document.getElementById('btn-copy')) {
+            // Criar um novo grupo para clipboard
+            const grpClipboard = document.createElement('div');
+            grpClipboard.className = 'toolbar-group'; // Usa estilo existente
+
+            // Log para debug
+            console.log('[Editor] Injetando botões de Clipboard na toolbar...');
+
+            const createBtn = (id, icon, title, action) => {
+                const btn = document.createElement('button');
+                btn.id = id;
+                btn.className = 'btn-tool';
+                btn.innerHTML = icon;
+                btn.title = title;
+                btn.style.fontSize = '16px'; // Garante visibilidade
+                btn.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log(`[Toolbar] Clicked ${id}`);
+                    action();
+                };
+                return btn;
+            };
+
+            const btnCopy = createBtn('btn-copy', '📋', 'Copiar (Ctrl+C)', () => this.copiarEntidade());
+            const btnPaste = createBtn('btn-paste', '📥', 'Colar (Ctrl+V)', () => this.colarEntidade());
+
+            grpClipboard.appendChild(btnCopy);
+            grpClipboard.appendChild(btnPaste);
+
+            // Inserir após o primeiro grupo (Ferramentas)
+            const firstGroup = toolbar.querySelector('.toolbar-group');
+            if (firstGroup && firstGroup.nextSibling) {
+                toolbar.insertBefore(grpClipboard, firstGroup.nextSibling);
+            } else {
+                toolbar.appendChild(grpClipboard);
+            }
+        }
 
         if (btnSettings && modalSettings) {
             btnSettings.addEventListener('click', () => {
@@ -480,6 +609,12 @@ class EditorPrincipal {
 
         if (!modal) return;
 
+        // Hook Demo Game Button
+        const btnDemo = document.getElementById('btn-startup-demo');
+        btnDemo?.addEventListener('click', () => {
+            this.carregarDemo('demo_game.json');
+        });
+
         // Novo Projeto (Forçado, sem confirmar pois é startup)
         btnNew?.addEventListener('click', () => {
             this.novoProjeto(false); // false = não confirmar
@@ -499,6 +634,137 @@ class EditorPrincipal {
                 modal.style.display = 'none';
             }
         });
+    }
+
+    /**
+     * Carrega o jogo demo a partir do JSON
+     */
+    async carregarDemo(url) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Erro ao carregar demo');
+            const json = await response.json();
+
+            this.aplicarProjeto(json);
+
+            // Ocultar modal startup
+            const modal = document.getElementById('modal-startup');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+            }
+            this.log('Demo carregada com sucesso!', 'success');
+        } catch (err) {
+            console.error(err);
+            alert('Falha ao carregar demo: ' + err.message);
+        }
+    }
+
+    /**
+     * Aplica os dados do projeto (Extraído de carregarProjeto)
+     */
+    aplicarProjeto(dados) {
+        // 1. Carregar Assets (dependência das entidades)
+        if (dados.assets && this.assetManager) {
+            this.assetManager.desserializar(dados.assets);
+        }
+
+        // 2. Carregar Pastas
+        if (dados.pastas) {
+            this.pastas = dados.pastas;
+        }
+
+        // 3. Carregar Entidades
+        if (dados.entidades) {
+            this.entidades = [];
+            this.engine.entidades = []; // Limpa engine
+            this.sceneConfig = dados.sceneConfig || { backgroundColor: '#0a0a15' };
+            // Resetar ID count
+            Entidade.contadorId = 0;
+
+            dados.entidades.forEach(dado => {
+                const ent = Entidade.desserializar(dado);
+
+                // CRÍTICO: Recriar componentes manualmente (Importante para carregar projeto externo)
+                if (dado.componentes) {
+                    let listaComponentes = Array.isArray(dado.componentes)
+                        ? dado.componentes
+                        : Object.values(dado.componentes);
+
+                    // CRÍTICO: Ordenar para garantir que ScriptComponent seja o ÚLTIMO
+                    // Isso permite que o script acesse outros componentes (UI, Sprite, etc) no constructor/inicializar
+                    listaComponentes.sort((a, b) => {
+                        if (a.tipo === 'ScriptComponent' && b.tipo !== 'ScriptComponent') return 1;
+                        if (a.tipo !== 'ScriptComponent' && b.tipo === 'ScriptComponent') return -1;
+                        return 0;
+                    });
+
+                    for (const dadosComp of listaComponentes) {
+                        let componente = null;
+                        try {
+                            // Factory de componentes
+                            if (dadosComp.tipo === 'SpriteComponent') componente = new SpriteComponent();
+                            else if (dadosComp.tipo === 'CollisionComponent') componente = new CollisionComponent();
+                            else if (dadosComp.tipo === 'PhysicsComponent') componente = new PhysicsComponent();
+                            else if (dadosComp.tipo === 'ScriptComponent') componente = new ScriptComponent();
+                            else if (dadosComp.tipo === 'TilemapComponent') componente = new TilemapComponent();
+                            else if (dadosComp.tipo === 'CameraFollowComponent') componente = new CameraFollowComponent();
+                            else if (dadosComp.tipo === 'ParallaxComponent') componente = new ParallaxComponent();
+                            else if (dadosComp.tipo === 'DialogueComponent') componente = new DialogueComponent();
+                            else if (dadosComp.tipo === 'KillZoneComponent') componente = new KillZoneComponent();
+                            else if (dadosComp.tipo === 'CheckpointComponent') componente = new CheckpointComponent();
+                            else if (dadosComp.tipo === 'ParticleEmitterComponent') componente = new ParticleEmitterComponent();
+                            else if (dadosComp.tipo === 'UIComponent') componente = new UIComponent();
+                            else if (dadosComp.tipo === 'InventoryComponent') componente = new InventoryComponent();
+                            else if (dadosComp.tipo === 'ItemComponent') componente = new ItemComponent();
+
+                            // Deserializar dados
+                            if (componente) {
+                                const dadosConfig = dadosComp.config || dadosComp;
+
+                                if (componente.desserializar && dadosConfig) {
+                                    componente.desserializar(dadosConfig);
+                                } else if (dadosComp.config) {
+                                    Object.assign(componente, dadosComp.config);
+                                } else {
+                                    // Fallback legacy
+                                    Object.assign(componente, dadosComp);
+                                }
+
+                                // FIX: Usar ID único para scripts para evitar sobrescrita no Map
+                                if (componente.tipo === 'ScriptComponent') {
+                                    ent.adicionarComponente(componente.id, componente);
+                                } else {
+                                    ent.adicionarComponente(componente);
+                                }
+                            }
+                        } catch (errC) {
+                            console.error('Erro ao recriar componente:', dadosComp, errC);
+                        }
+                    }
+                }
+
+                this.entidades.push(ent);
+                this.engine.adicionarEntidade(ent);
+            });
+
+            // 4. Selecionar primeira entidade
+            if (this.entidades.length > 0) {
+                this.selecionarEntidade(this.entidades[0]);
+            }
+
+            // 5. Configurar Cena
+            if (this.sceneConfig.backgroundColor) {
+                // Update scene color logic if needed (usually handled in render)
+            }
+
+            // Atualizar UI
+            this.atualizarHierarquia();
+            if (this.painelAssets) this.painelAssets.atualizar();
+            this.atualizarContadorEntidades();
+
+            this.log('Projeto carregado com sucesso!', 'success');
+        }
     }
 
     /**
@@ -639,6 +905,10 @@ class EditorPrincipal {
 
         this.log('Entidade ' + tipo + ' criada: ' + entidade.nome, 'success');
 
+        // UNDO: Register Create Command
+        const cmd = new CmdCreateEntity(entidade);
+        this.history.execute(cmd);
+
         return entidade;
     }
 
@@ -666,6 +936,10 @@ class EditorPrincipal {
     removerEntidadeSelecionada() {
         if (!this.entidadeSelecionada) return;
 
+        // UNDO: Register Delete Command (Before actual deletion)
+        const cmd = new CmdDeleteEntity(this.entidadeSelecionada);
+        this.history.execute(cmd);
+
         const index = this.entidades.indexOf(this.entidadeSelecionada);
         if (index > -1) {
             this.entidades.splice(index, 1);
@@ -677,6 +951,161 @@ class EditorPrincipal {
             this.atualizarHierarquia();
             this.atualizarPainelPropriedades();
             this.atualizarContadorEntidades();
+        }
+    }
+
+    /**
+     * Copia a entidade selecionada para a área de transferência interna
+     */
+    copiarEntidade() {
+        if (!this.entidadeSelecionada) return;
+        const serializado = this.entidadeSelecionada.serializar();
+        this.clipboard = JSON.stringify(serializado);
+        this.log('Entidade copiada!', 'info');
+    }
+
+    /**
+     * Cola a entidade da área de transferência
+     */
+    colarEntidade_BROKEN() {
+        if (!this.clipboard) return;
+
+        try {
+            const dados = JSON.parse(this.clipboard);
+            // Gerar novo ID único
+            dados.id = 'ent_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+
+            // Deslocar posição para ver a cópia
+            dados.x += 32;
+            dados.y += 32;
+
+            // Criar entidade base
+            const novaEntidade = new Entidade(dados.x, dados.y, dados.largura, dados.altura, dados.cor);
+            // Atribuir Engine antes de desserializar componentes (importante para init)
+            novaEntidade.engine = this.engine;
+
+            // Desserializar propriedades base (ignora componentes)
+            novaEntidade.desserializar(dados);
+
+            // --- RECONSTRUÇÃO DE COMPONENTES ---
+            if (dados.componentes) {
+                let listaComponentes = Array.isArray(dados.componentes)
+                    ? dados.componentes
+                    : Object.values(dados.componentes);
+
+                // Ordenar para garantir que ScriptComponent seja o último
+                listaComponentes.sort((a, b) => {
+                    if (a.tipo === 'ScriptComponent' && b.tipo !== 'ScriptComponent') return 1;
+                    if (a.tipo !== 'ScriptComponent' && b.tipo === 'ScriptComponent') return -1;
+                    return 0;
+                });
+
+                for (const dadosComp of listaComponentes) {
+                    let componente = null;
+                    try {
+                        // Factory de componentes (Manual mapping)
+                        if (dadosComp.tipo === 'SpriteComponent') componente = new SpriteComponent();
+                        else if (dadosComp.tipo === 'CollisionComponent') componente = new CollisionComponent();
+                        else if (dadosComp.tipo === 'ScriptComponent') componente = new ScriptComponent();
+                        else if (dadosComp.tipo === 'TilemapComponent') componente = new TilemapComponent();
+                        else if (dadosComp.tipo === 'CameraFollowComponent') componente = new CameraFollowComponent();
+                        else if (dadosComp.tipo === 'ParallaxComponent') componente = new ParallaxComponent();
+                        else if (dadosComp.tipo === 'DialogueComponent') componente = new DialogueComponent();
+                        else if (dadosComp.tipo === 'KillZoneComponent') componente = new KillZoneComponent();
+                        else if (dadosComp.tipo === 'CheckpointComponent') componente = new CheckpointComponent();
+                        else if (dadosComp.tipo === 'ParticleEmitterComponent') componente = new ParticleEmitterComponent();
+                        else if (dadosComp.tipo === 'UIComponent') componente = new UIComponent();
+                        else if (dadosComp.tipo === 'InventoryComponent') componente = new InventoryComponent();
+                        else if (dadosComp.tipo === 'ItemComponent') componente = new ItemComponent();
+                        else if (dadosComp.tipo === 'LightComponent') componente = new LightComponent();
+
+                        // Deserializar dados do componente
+                        if (componente) {
+                            const dadosConfig = dadosComp.config || dadosComp;
+
+                            if (componente.desserializar && dadosConfig) {
+                                componente.desserializar(dadosConfig);
+                            } else if (dadosComp.config) {
+                                Object.assign(componente, dadosComp.config);
+                            } else {
+                                Object.assign(componente, dadosComp);
+                            }
+
+                            // FIX: Usar ID único para scripts
+                            if (componente.tipo === 'ScriptComponent') {
+                                const scriptId = `script_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+                                novaEntidade.adicionarComponente(scriptId, componente);
+                            } else {
+                                novaEntidade.adicionarComponente(componente);
+                            }
+                        }
+                    } catch (err) {
+                        console.warn(`Erro ao colar componente ${dadosComp.tipo}:`, err);
+                    }
+                }
+            }
+
+            // Ajustar Hierarquia (Pasta)
+            if (dados.pastaId && !this.pastas.some(p => p.id === dados.pastaId)) {
+                dados.pastaId = null;
+                novaEntidade.pastaId = null;
+            }
+
+            // Adicionar à lista e engine
+            this.entidades.push(novaEntidade);
+            this.engine.adicionarEntidade(novaEntidade);
+
+            // Selecionar nova entidade
+            this.selecionarEntidade(novaEntidade);
+            this.atualizarHierarquia();
+            this.log('Entidade clonada e colada com sucesso!', 'success');
+
+        } catch (e) {
+            console.error('Erro ao colar entidade:', e);
+            this.log('Erro ao colar: ' + e.message, 'error');
+        }
+    }
+
+    colarEntidade_OLD() {
+        if (!this.clipboard) return;
+
+        try {
+            const dados = JSON.parse(this.clipboard);
+            // Gerar novo ID único
+            dados.id = 'ent_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+
+            // Deslocar posição para ver a cópia
+            dados.x += 32;
+            dados.y += 32;
+
+            // Criar entidade
+            const novaEntidade = new Entidade(dados.x, dados.y, dados.largura, dados.altura, dados.cor);
+            // Atribuir Engine antes de desserializar componentes (importante para init)
+            novaEntidade.engine = this.engine;
+
+            // Desserializar (recria componentes e propriedades)
+            novaEntidade.desserializar(dados);
+
+            // Ajustar Hierarquia (Pasta)
+            // Mantém a mesma pasta da original se existir, ou vai pro root se a pasta não existir mais
+            // (dados.pastaId já vem no JSON, mas verificamos se a pasta existe)
+            if (dados.pastaId && !this.pastas.some(p => p.id === dados.pastaId)) {
+                dados.pastaId = null; // Pasta não existe mais, vai pro root
+                novaEntidade.pastaId = null;
+            }
+
+            // Adicionar à lista e engine
+            this.entidades.push(novaEntidade);
+            this.engine.adicionarEntidade(novaEntidade);
+
+            // Selecionar nova entidade
+            this.selecionarEntidade(novaEntidade);
+            this.atualizarHierarquia();
+            this.log('Entidade colada!', 'success');
+
+        } catch (e) {
+            console.error('Erro ao colar entidade:', e);
+            this.log('Erro ao colar: ' + e.message, 'error');
         }
     }
 
@@ -1128,6 +1557,12 @@ class EditorPrincipal {
                             x: mundoPos.x - entidadeClicada.x,
                             y: mundoPos.y - entidadeClicada.y
                         };
+                        // UNDO: Capture start state
+                        this.dragStartState = {
+                            x: entidadeClicada.x,
+                            y: entidadeClicada.y,
+                            id: entidadeClicada.id
+                        };
                     }
                 }
             } else {
@@ -1272,6 +1707,51 @@ class EditorPrincipal {
      * Evento: Soltar mouse
      */
     aoSoltarMouse(evento) {
+        // UNDO: Commit Move
+        if (this.arrastando && this.entidadeSelecionada && this.dragStartState) {
+            const ent = this.entidadeSelecionada;
+            // Só adiciona se houve mudança real
+            if (ent.x !== this.dragStartState.x || ent.y !== this.dragStartState.y) {
+                const cmd = new CmdMoveEntity(ent, this.dragStartState.x, this.dragStartState.y, ent.x, ent.y);
+                this.history.execute(cmd);
+            }
+            this.dragStartState = null;
+        }
+
+        // UNDO: Commit Resize
+        if (this.redimensionando && this.entidadeSelecionada && this.entidadeAoIniciarResize) {
+            const ent = this.entidadeSelecionada;
+            const start = this.entidadeAoIniciarResize;
+            // Verifica mudanças em W/H (Resize) ou Rot (Rotate)
+            // Simplificando: Se houver qualquer diferença, registra. 
+            // Note: CmdResizeEntity atualmente só trata W/H. Se tiver Rotação, precisaria de CmdRotate ou CmdTransform genérico.
+            // O código de resize também altera X/Y em alguns casos (TL, BL).
+            // Vamos criar um CmdTransform genérico ou atualizar o CmdResize para aceitar X/Y
+            // Por enquanto, usaremos CmdResizeEntity apenas para W/H, mas perceba que se X/Y mudou, o CmdMove não pegou (pq não estava arrastando)
+
+            // Melhor abordagem: CmdTransform que salva x,y,w,h,rot.
+            // Para ser rápido, vamos adaptar CmdResizeEntity para ser CmdTransform na prática, ou criar um aqui inline se o HistoryManager aceitar.
+            // Mas as classes já estão definidas.
+            // Vou usar CmdMoveEntity SE x/y mudou, E CmdResizeEntity se w/h mudou.
+            // Porém, resize TL muda ambos. Dois comandos? Melhor não.
+            // Vou modificar o CmdResizeEntity para suportar X,Y também se necessário, ou criar um on-the-fly.
+
+            // Devido a limitacao de edicao, vou assumir CmdResizeEntity apenas W/H por agora e se x/y mudar, paciência (ou ajusto depois).
+            // Espere, CmdMoveEntity é x/y.
+
+            if (ent.largura !== start.w || ent.altura !== start.h || ent.rotacao !== start.rot) {
+                if (ent.largura !== start.w || ent.altura !== start.h) {
+                    const cmd = new CmdResizeEntity(ent, start.w, start.h, ent.largura, ent.altura);
+                    this.history.execute(cmd);
+                }
+
+                if (ent.x !== start.x || ent.y !== start.y) {
+                    const cmd = new CmdMoveEntity(ent, start.x, start.y, ent.x, ent.y);
+                    this.history.execute(cmd);
+                }
+            }
+        }
+
         this.arrastando = false;
         this.redimensionando = false;
         this.handleAtivo = null;
@@ -1303,15 +1783,49 @@ class EditorPrincipal {
      * Evento: Pressionar tecla
      */
     aoPressionarTecla(evento) {
+        // Ignora atalhos se estiver digitando em input (exceto combos Ctrl que podem ser desejados e tratados)
+        const isInput = evento.target.tagName === 'INPUT' || evento.target.tagName === 'TEXTAREA';
+
+        // Combos com Control
+        if (evento.ctrlKey) {
+            // Ctrl+C: Copiar
+            if (evento.key === 'c' || evento.key === 'C') {
+                if (!isInput) {
+                    evento.preventDefault();
+                    this.copiarEntidade();
+                }
+            }
+            // Ctrl+V: Colar
+            if (evento.key === 'v' || evento.key === 'V') {
+                if (!isInput) {
+                    evento.preventDefault();
+                    this.colarEntidade();
+                }
+            }
+            // Ctrl+S: Salvar
+            if (evento.key === 's' || evento.key === 'S') {
+                evento.preventDefault();
+                this.salvarProjeto();
+            }
+
+            // Ctrl+Z: Undo
+            if (evento.key === 'z' || evento.key === 'Z') {
+                evento.preventDefault();
+                this.history.undo();
+            }
+            // Ctrl+Y: Redo
+            if (evento.key === 'y' || evento.key === 'Y') {
+                evento.preventDefault();
+                this.history.redo();
+            }
+            return;
+        }
+
+        if (isInput) return;
+
         // Delete: remover entidade selecionada
         if (evento.key === 'Delete' && this.entidadeSelecionada) {
             this.removerEntidadeSelecionada();
-        }
-
-        // Ctrl+S: Salvar
-        if (evento.ctrlKey && evento.key === 's') {
-            evento.preventDefault();
-            this.salvarProjeto();
         }
 
         // Atalhos de ferramentas
@@ -2515,9 +3029,92 @@ class EditorPrincipal {
             componentsHtml += createComponentHtml('ParticleEmitterComponent', 'Sistema de Partículas', '✨', '#e74c3c', particleHtml, true);
         }
 
+        // 2.14 InventoryComponent
+        const invComp = ent.obterComponente('InventoryComponent');
+        if (invComp) {
+            let invHtml = `
+            <div style="background:#222; padding:5px; border-radius:4px; margin-bottom:5px;">
+                <div style="margin-bottom:5px;">
+                     <label style="font-size:10px; color:#aaa;">Slots Máximos</label>
+                     <input type="number" value="${invComp.slots}" class="plugin-prop" data-plugin="InventoryComponent" data-prop="slots" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px;">
+                </div>
+                <div style="font-size:10px; color:#666; margin-top:5px; padding:5px; background:#1a1a1a; border-radius:3px;">
+                    <div>🎒 Itens Atuais: <strong style="color:#f39c12">${invComp.items.length}</strong></div>
+                    ${invComp.items.map(i => `<div style="color:#aaa; font-size:9px;">- ${i.id} (x${i.qtd})</div>`).join('')}
+                </div>
+            </div>`;
+            componentsHtml += createComponentHtml('InventoryComponent', 'Inventário (Player)', '🎒', '#f39c12', invHtml, true);
+        }
+
+        // 2.15 ItemComponent
+        const itemComp = ent.obterComponente('ItemComponent');
+        if (itemComp) {
+            let itemHtml = `
+            <div style="background:#222; padding:5px; border-radius:4px; margin-bottom:5px;">
+                <div style="display:flex; gap:5px; margin-bottom:5px;">
+                    <div style="flex:2;">
+                         <label style="font-size:10px; color:#aaa;">Item ID</label>
+                         <input type="text" value="${itemComp.itemId}" class="plugin-prop" data-plugin="ItemComponent" data-prop="itemId" style="width:100%; background:#111; color:#f1c40f; border:1px solid #444; padding:5px; font-weight:bold;">
+                    </div>
+                    <div style="flex:1;">
+                         <label style="font-size:10px; color:#aaa;">Qtd</label>
+                         <input type="number" value="${itemComp.quantidade}" class="plugin-prop" data-plugin="ItemComponent" data-prop="quantidade" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px;">
+                    </div>
+                </div>
+                 <div style="margin-bottom:5px;">
+                     <label style="font-size:11px; color:#ccc; display:flex; align-items:center; cursor:pointer;">
+                        <input type="checkbox" class="plugin-prop-check" data-plugin="ItemComponent" data-prop="autoPickup" ${(itemComp.autoPickup) ? 'checked' : ''} style="margin-right:5px;"> Auto Coletar
+                    </label>
+                </div>
+                <div style="margin-bottom:5px;">
+                     <label style="font-size:11px; color:#ccc; display:flex; align-items:center; cursor:pointer;">
+                        <input type="checkbox" class="plugin-prop-check" data-plugin="ItemComponent" data-prop="destroyOnPickup" ${(itemComp.destroyOnPickup) ? 'checked' : ''} style="margin-right:5px;"> Destruir ao Pegar
+                    </label>
+                </div>
+                <div style="margin-bottom:5px;">
+                     <label style="font-size:11px; color:#ccc; display:flex; align-items:center; cursor:pointer;">
+                        <input type="checkbox" class="plugin-prop-check" data-plugin="ItemComponent" data-prop="flutuar" ${(itemComp.flutuar) ? 'checked' : ''} style="margin-right:5px;"> Efeito Flutuar
+                    </label>
+                </div>
+
+                <div style="margin-top:5px; padding-top:5px; border-top:1px dashed #444;">
+                     <label style="font-size:10px; color:#aaa;">Ícone no Inventário (Sprite)</label>
+                     <select class="plugin-prop" data-plugin="ItemComponent" data-prop="icon" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px; margin-bottom:5px;">
+                          <option value="">(Padrão/Nenhum)</option>
+                          ${(() => {
+                    let opts = '';
+                    if (this.assetManager && this.assetManager.assets.sprites) {
+                        this.assetManager.assets.sprites.forEach(asset => {
+                            const sel = (asset.id === itemComp.icon) ? 'selected' : '';
+                            opts += `<option value="${asset.id}" ${sel}>${asset.nome}</option>`;
+                        });
+                    }
+                    return opts;
+                })()}
+                     </select>
+
+                    <label style="font-size:10px; color:#aaa;">Som de Pickup (Asset ID)</label>
+                    <input type="text" value="${itemComp.pickupSound || ''}" class="plugin-prop" data-plugin="ItemComponent" data-prop="pickupSound" style="width:100%; background:#111; color:#aaa; border:1px solid #444; padding:5px;">
+                </div>
+            </div>`;
+            componentsHtml += createComponentHtml('ItemComponent', 'Item Coletável', '💎', '#9b59b6', itemHtml, true);
+        }
+
         // 2.13 UIComponent
         const uiRef = ent.obterComponente('UIComponent');
         if (uiRef) {
+            // Helper para gerar options com seleção
+            const getOpts = (currentVal) => {
+                let opts = '<option value="">(Nenhum)</option>';
+                if (this.assetManager && this.assetManager.assets.sprites) {
+                    this.assetManager.assets.sprites.forEach(asset => {
+                        const sel = (asset.id === currentVal) ? 'selected' : '';
+                        opts += `<option value="${asset.id}" ${sel}>${asset.nome}</option>`;
+                    });
+                }
+                return opts;
+            };
+
             let uiHtml = `
              <div style="background:#222; padding:10px; border-radius:4px;">
                 <div style="margin-bottom:10px;">
@@ -2527,7 +3124,79 @@ class EditorPrincipal {
                         <option value="screen" ${uiRef.renderMode === 'screen' ? 'selected' : ''}>Screen Space (HUD)</option>
                     </select>
                 </div>
+
+                <div style="margin-bottom:10px;">
+                     <label style="font-size:11px; color:#ccc; display:flex; align-items:center; cursor:pointer;">
+                        <input type="checkbox" id="prop-ui-global" ${(uiRef.usarPlayerGlobal) ? 'checked' : ''} style="margin-right:5px;"> Usar Player Global (HUD)
+                    </label>
+                    <div style="font-size:9px; color:#666; margin-left:18px;">Se marcado, busca dados (HP, Inv) no Player e não nesta entidade.</div>
+                </div>
+
+                <div style="margin-bottom:10px;">
+                    <label style="font-size:10px; color:#aaa;">Imagem Slot (Vazio)</label>
+                    <select id="prop-ui-img-slot" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px; margin-bottom:5px; font-size:11px;">
+                         <option value="">(Padrão)</option>
+                         ${(() => {
+                    let opts = '';
+                    if (this.assetManager && this.assetManager.assets.sprites) {
+                        this.assetManager.assets.sprites.forEach(asset => {
+                            const sel = (asset.id === uiRef.imagemSlot) ? 'selected' : '';
+                            opts += `<option value="${asset.id}" ${sel}>${asset.nome}</option>`;
+                        });
+                    }
+                    return opts;
+                })()}
+                    </select>
+
+                    <label style="font-size:10px; color:#aaa;">Imagem Slot (Cheio/Select)</label>
+                    <select id="prop-ui-img-full" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px; font-size:11px;">
+                         <option value="">(Padrão)</option>
+                         ${(() => {
+                    let opts = '';
+                    if (this.assetManager && this.assetManager.assets.sprites) {
+                        this.assetManager.assets.sprites.forEach(asset => {
+                            const sel = (asset.id === uiRef.imagemSlotCheio) ? 'selected' : '';
+                            opts += `<option value="${asset.id}" ${sel}>${asset.nome}</option>`;
+                        });
+                    }
+                    return opts;
+                })()}
+                    </select>
+                </div>
                 
+                <details style="background:#1a1a1a; padding:5px; margin-top:10px; border-radius:4px; margin-bottom:10px;">
+                    <summary style="cursor:pointer; color:#ccc; font-size:11px; user-select:none;">🎨 Inventário Avançado</summary>
+                    <div style="padding-top:10px;">
+                        <div style="display:flex; gap:5px; margin-bottom:10px;">
+                            <div style="flex:1;">
+                                <label style="font-size:10px; color:#aaa;">Escala</label>
+                                <input type="number" id="prop-ui-scale" value="${uiRef.inventoryScale || 1.0}" step="0.1" style="width:100%; background:#111; color:white; border:1px solid #444; padding:3px;">
+                            </div>
+                            <div style="flex:1;">
+                                <label style="font-size:10px; color:#aaa;">Colunas</label>
+                                <input type="number" id="prop-ui-cols" value="${uiRef.inventoryCols || 5}" style="width:100%; background:#111; color:white; border:1px solid #444; padding:3px;">
+                            </div>
+                            <div style="flex:1;">
+                                <label style="font-size:10px; color:#aaa;">Linhas</label>
+                                <input type="number" id="prop-ui-rows" value="${uiRef.inventoryRows || 4}" style="width:100%; background:#111; color:white; border:1px solid #444; padding:3px;">
+                            </div>
+                        </div>
+
+                        <label style="font-size:10px; color:#aaa; font-weight:bold; margin-bottom:5px; display:block;">Moldura (9-Slice)</label>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:2px; margin-bottom:5px;">
+                            ${['TopLeft', 'Top', 'TopRight', 'Left', 'Center', 'Right', 'BottomLeft', 'Bottom', 'BottomRight'].map(pos => {
+                    if (pos === 'Center') return '<div style="background:#222;"></div>';
+                    const prop = `border${pos}`;
+                    return `<div>
+                                    <select id="prop-ui-${prop}" title="${pos}" style="width:100%; font-size:9px; background:#111; color:white; border:1px solid #444; padding:0;">
+                                        ${getOpts(uiRef[prop])}
+                                    </select>
+                                </div>`;
+                }).join('')}
+                        </div>
+                    </div>
+                </details>
+
                 <div style="background:#1a1a2e; padding:10px; border-radius:4px; margin-bottom:10px; border:1px dashed #444;">
                     <div style="font-size:10px; color:#aaa; margin-bottom:5px;">Elementos Ativos:</div>
                     <div style="font-weight:bold; color:#4ecdc4;">${uiRef.elementos.length} Elementos</div>
@@ -2703,9 +3372,26 @@ class EditorPrincipal {
         // Inputs Básicos
         const bindInput = (id, prop, isFloat = false) => {
             const el = document.getElementById(id);
-            if (el) el.addEventListener('input', (e) => {
-                ent[prop] = isFloat ? parseFloat(e.target.value) : e.target.value;
-            });
+            if (el) {
+                // Initial Value Capture
+                el.addEventListener('focus', () => {
+                    el.dataset.undoVal = ent[prop];
+                });
+
+                // Realtime Update
+                el.addEventListener('input', (e) => {
+                    ent[prop] = isFloat ? parseFloat(e.target.value) : e.target.value;
+                });
+
+                // Commit Undo
+                el.addEventListener('change', (e) => {
+                    const oldVal = isFloat ? parseFloat(el.dataset.undoVal) : el.dataset.undoVal;
+                    const newVal = isFloat ? parseFloat(e.target.value) : e.target.value;
+                    if (oldVal !== newVal) {
+                        this.history.execute(new CmdChangeProperty(ent, prop, oldVal, newVal));
+                    }
+                });
+            }
         };
         bindInput('prop-nome', 'nome');
 
@@ -2799,6 +3485,71 @@ class EditorPrincipal {
             this.atualizarPainelPropriedades();
         });
 
+        // UI Component Listeners
+        const propUiMode = document.getElementById('prop-ui-mode');
+        if (propUiMode) {
+            propUiMode.addEventListener('change', (e) => {
+                const uiComp = ent.obterComponente('UIComponent');
+                if (uiComp) {
+                    uiComp.renderMode = e.target.value;
+                    this.log('Modo de Renderização atualizado.', 'info');
+                }
+            });
+        }
+
+        const propUiGlobal = document.getElementById('prop-ui-global');
+        if (propUiGlobal) {
+            propUiGlobal.addEventListener('change', (e) => {
+                const uiComp = ent.obterComponente('UIComponent');
+                if (uiComp) {
+                    uiComp.usarPlayerGlobal = e.target.checked;
+                    this.log('Link Global com Player atualizado!', 'success');
+                }
+            });
+        }
+
+        ['prop-ui-img-slot', 'prop-ui-img-full'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                // Dropdowns use 'change', not 'input'
+                el.addEventListener('change', (e) => {
+                    const uiComp = ent.obterComponente('UIComponent');
+                    if (uiComp) {
+                        const prop = id === 'prop-ui-img-slot' ? 'imagemSlot' : 'imagemSlotCheio';
+                        uiComp[prop] = e.target.value;
+                        this.log(`Imagem ${prop} atualizada.`, 'info');
+                    }
+                });
+            }
+        });
+
+        // Advanced Inventory Listeners
+        ['prop-ui-scale', 'prop-ui-cols', 'prop-ui-rows'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', (e) => {
+                    const uiComp = ent.obterComponente('UIComponent');
+                    if (uiComp) {
+                        const prop = id === 'prop-ui-scale' ? 'inventoryScale' : (id === 'prop-ui-cols' ? 'inventoryCols' : 'inventoryRows');
+                        uiComp[prop] = parseFloat(e.target.value);
+                    }
+                });
+            }
+        });
+
+        ['TopLeft', 'Top', 'TopRight', 'Left', 'Right', 'BottomLeft', 'Bottom', 'BottomRight'].forEach(pos => {
+            const el = document.getElementById(`prop-ui-border${pos}`);
+            if (el) {
+                el.addEventListener('change', (e) => {
+                    const uiComp = ent.obterComponente('UIComponent');
+                    if (uiComp) {
+                        uiComp[`border${pos}`] = e.target.value;
+                    }
+                });
+            }
+        });
+
+
         // Autoplay Anim Change
         document.querySelectorAll('.prop-autoplay-anim').forEach(select => {
             select.addEventListener('change', (e) => {
@@ -2838,16 +3589,55 @@ class EditorPrincipal {
         });
 
         // Plugin Props (Generic)
-        document.querySelectorAll('.plugin-prop').forEach(input => {
-            input.addEventListener('input', (e) => {
-                const pluginName = e.target.dataset.plugin;
-                const propName = e.target.dataset.prop;
-                const comp = ent.obterComponente(pluginName);
-                if (comp) {
-                    comp[propName] = parseFloat(e.target.value);
-                    console.log(`[Editor] Updated ${pluginName}.${propName} to ${comp[propName]}`);
+        // Plugin Props (Generic)
+        // FIX: Suporte para 'input' e 'change' para cobrir Selects e Text Inputs
+        // Plugin Props (Generic)
+        const updatePluginProp = (e) => {
+            const pluginName = e.target.dataset.plugin;
+            const propName = e.target.dataset.prop;
+            const comp = ent.obterComponente(pluginName);
+            if (comp) {
+                let val = e.target.value;
+                if (e.target.type === 'number' || e.target.type === 'range') {
+                    val = parseFloat(val);
                 }
+
+                // UNDO Commit (Change Event)
+                if (e.type === 'change') {
+                    let oldVal = e.target.dataset.undoVal;
+                    if (e.target.type === 'number' || e.target.type === 'range') {
+                        oldVal = parseFloat(oldVal);
+                    } else if (e.target.type === 'checkbox') {
+                        oldVal = (oldVal === 'true');
+                    }
+
+                    if (oldVal !== val) {
+                        this.history.execute(new CmdChangeProperty(comp, propName, oldVal, val));
+                    }
+                }
+
+                comp[propName] = val;
+                console.log(`[Editor] Updated ${pluginName}.${propName} to`, val);
+            }
+        };
+
+        document.querySelectorAll('.plugin-prop').forEach(input => {
+            // Initial Value
+            input.addEventListener('focus', () => {
+                const pluginName = input.dataset.plugin;
+                const propName = input.dataset.prop;
+                const comp = ent.obterComponente(pluginName);
+                if (comp) input.dataset.undoVal = comp[propName];
             });
+
+            // Realtime Update
+            const evtType = (input.tagName === 'SELECT') ? 'change' : 'input';
+            input.addEventListener(evtType, updatePluginProp);
+
+            // Undo Commit (if not already handled by change)
+            if (evtType !== 'change') {
+                input.addEventListener('change', updatePluginProp);
+            }
         });
 
         // KillZone Listeners
@@ -2899,19 +3689,55 @@ class EditorPrincipal {
 
         // Listeners de Offset (Sprite)
         const bindOffset = (axis) => {
-            document.getElementById(`prop-offset-${axis}`)?.addEventListener('input', (e) => {
-                const sprite = ent.obterComponente('SpriteComponent');
-                if (sprite) sprite[`offset${axis.toUpperCase()}`] = parseFloat(e.target.value);
-            });
+            const el = document.getElementById(`prop-offset-${axis}`);
+            if (el) {
+                el.addEventListener('focus', () => {
+                    const sprite = ent.obterComponente('SpriteComponent');
+                    if (sprite) el.dataset.undoVal = sprite[`offset${axis.toUpperCase()}`];
+                });
+                el.addEventListener('input', (e) => {
+                    const sprite = ent.obterComponente('SpriteComponent');
+                    if (sprite) sprite[`offset${axis.toUpperCase()}`] = parseFloat(e.target.value);
+                });
+                el.addEventListener('change', (e) => {
+                    const sprite = ent.obterComponente('SpriteComponent');
+                    if (sprite) {
+                        const prop = `offset${axis.toUpperCase()}`;
+                        const oldVal = parseFloat(el.dataset.undoVal);
+                        const newVal = parseFloat(e.target.value);
+                        if (oldVal !== newVal) {
+                            this.history.execute(new CmdChangeProperty(sprite, prop, oldVal, newVal));
+                        }
+                    }
+                });
+            }
         }
         bindOffset('x'); bindOffset('y');
 
         // Listeners de Scale (Sprite)
         const bindScale = (axis) => {
-            document.getElementById(`prop-scale-${axis}`)?.addEventListener('input', (e) => {
-                const sprite = ent.obterComponente('SpriteComponent');
-                if (sprite) sprite[`scale${axis.toUpperCase()}`] = parseFloat(e.target.value) || 1.0;
-            });
+            const el = document.getElementById(`prop-scale-${axis}`);
+            if (el) {
+                el.addEventListener('focus', () => {
+                    const sprite = ent.obterComponente('SpriteComponent');
+                    if (sprite) el.dataset.undoVal = sprite[`scale${axis.toUpperCase()}`] || 1.0;
+                });
+                el.addEventListener('input', (e) => {
+                    const sprite = ent.obterComponente('SpriteComponent');
+                    if (sprite) sprite[`scale${axis.toUpperCase()}`] = parseFloat(e.target.value) || 1.0;
+                });
+                el.addEventListener('change', (e) => {
+                    const sprite = ent.obterComponente('SpriteComponent');
+                    if (sprite) {
+                        const prop = `scale${axis.toUpperCase()}`;
+                        const oldVal = parseFloat(el.dataset.undoVal) || 1.0;
+                        const newVal = parseFloat(e.target.value) || 1.0;
+                        if (oldVal !== newVal) {
+                            this.history.execute(new CmdChangeProperty(sprite, prop, oldVal, newVal));
+                        }
+                    }
+                });
+            }
         }
         bindScale('x'); bindScale('y');
 
@@ -2926,28 +3752,37 @@ class EditorPrincipal {
 
         // Script Props Edit
         document.querySelectorAll('.script-prop-input').forEach(input => {
+            // Initial Value
+            input.addEventListener('focus', () => {
+                const scriptId = input.dataset.scriptId;
+                const propName = input.dataset.prop;
+                const comp = ent.obterComponente(scriptId);
+                if (comp) input.dataset.undoVal = comp.instance[propName];
+            });
+
+            // Realtime
             input.addEventListener('input', (e) => {
                 const scriptId = e.target.dataset.scriptId;
                 const propName = e.target.dataset.prop;
                 const valor = e.target.value;
+                const comp = ent.obterComponente(scriptId);
+                if (comp) comp.instance[propName] = valor;
+            });
 
-                // Tenta achar componente pelo ID direto (que é a chave no Map)
-                let comp = ent.obterComponente(scriptId);
+            // Undo Commit
+            input.addEventListener('change', (e) => {
+                const scriptId = e.target.dataset.scriptId;
+                const propName = e.target.dataset.prop;
+                const valor = e.target.value;
+                const comp = ent.obterComponente(scriptId);
 
-                // Fallback: Se não achou por ID, tenta buscar por tipo se for ScriptComponent (caso ID tenha se perdido na renderização)
-                if (!comp) {
-                    // Isso é arriscado se tiver 2 scripts, mas melhor que nada. 
-                    // O correto é garantir que data-script-id seja a chave do Map.
-                }
-
-                if (comp && comp.instance) {
-                    // Tenta converter para número se parecer número
-                    if (!isNaN(parseFloat(valor)) && isFinite(valor)) {
-                        comp.instance[propName] = parseFloat(valor);
-                    } else {
-                        comp.instance[propName] = valor;
+                if (comp) {
+                    const oldVal = input.dataset.undoVal;
+                    if (oldVal !== valor) {
+                        // Script values are on .instance, but CmdChangeProperty expects target[prop]
+                        // We pass comp.instance as target
+                        this.history.execute(new CmdChangeProperty(comp.instance, propName, oldVal, valor));
                     }
-                    console.log(`[Editor] Updated script ${propName} = ${comp.instance[propName]}`);
                 }
             });
         });
@@ -3444,6 +4279,7 @@ class EditorPrincipal {
                                 <label class="ui-type-opt"><input type="radio" name="el-type" value="icones"> Ícones</label>
                                 <label class="ui-type-opt"><input type="radio" name="el-type" value="imagem"> Imagem</label>
                                 <label class="ui-type-opt"><input type="radio" name="el-type" value="texto"> Texto</label>
+                                <label class="ui-type-opt"><input type="radio" name="el-type" value="inventario"> Inventário</label>
                             </div>
                         </div>
 
@@ -3543,6 +4379,7 @@ class EditorPrincipal {
                 else if (el.tipo === 'icones') icon = '❤️';
                 else if (el.tipo === 'imagem') icon = '🖼️';
                 else if (el.tipo === 'texto') icon = '📝';
+                else if (el.tipo === 'inventario') icon = '🎒';
 
                 item.innerHTML = `<span>${icon}</span><span style="font-size:12px;">${el.tipo}</span>`;
                 item.onclick = () => editElement(index);
@@ -3553,7 +4390,7 @@ class EditorPrincipal {
         const updateVisibility = (tipo) => {
             modal.querySelector('#grp-imagem').style.display = (tipo === 'imagem') ? 'block' : 'none';
             modal.querySelector('#grp-texto').style.display = (tipo === 'texto') ? 'block' : 'none';
-            modal.querySelector('#grp-style-bar').style.display = (tipo === 'barra' || tipo === 'icones') ? 'block' : 'none';
+            modal.querySelector('#grp-style-bar').style.display = (tipo === 'barra' || tipo === 'icones' || tipo === 'inventario') ? 'block' : 'none';
         };
 
         const editElement = (index) => {
@@ -3714,7 +4551,11 @@ class EditorPrincipal {
             [t('category.gameplay')]: [
                 { id: 'DialogueComponent', nome: t('comp.dialogueSystem'), icon: '💬', unico: true },
                 { id: 'KillZoneComponent', nome: t('comp.killZone'), icon: '💀', unico: true },
-                { id: 'CheckpointComponent', nome: t('comp.checkpoint'), icon: '🚩', unico: true }
+                { id: 'DialogueComponent', nome: t('comp.dialogueSystem'), icon: '💬', unico: true },
+                { id: 'KillZoneComponent', nome: t('comp.killZone'), icon: '💀', unico: true },
+                { id: 'CheckpointComponent', nome: t('comp.checkpoint'), icon: '🚩', unico: true },
+                { id: 'InventoryComponent', nome: 'Inventário (Player)', icon: '🎒', unico: true },
+                { id: 'ItemComponent', nome: 'Item Coletável', icon: '💎', unico: true }
             ],
             [t('category.scripts')]: [
                 { id: 'ScriptComponent_Custom', nome: t('comp.scriptEmpty'), icon: '📜', unico: false },
@@ -3726,7 +4567,8 @@ class EditorPrincipal {
                 { id: 'ScriptComponent_DeathSimulator', nome: 'Morte (Simulador)', icon: '🔧', unico: false },
                 { id: 'ScriptComponent_Interaction', nome: t('comp.interaction'), icon: '💬', unico: false },
                 { id: 'ScriptComponent_Melee', nome: t('comp.meleeCombat'), icon: '⚔️', unico: false },
-                { id: 'ScriptComponent_Respawn', nome: t('comp.respawn'), icon: '👻', unico: false }
+                { id: 'ScriptComponent_Respawn', nome: t('comp.respawn'), icon: '👻', unico: false },
+                { id: 'ScriptComponent_Inventory', nome: 'Controlador de Inventário', icon: '🎒', unico: true }
             ],
             [t('category.plugins')]: [
                 { id: 'ScriptComponent_FloatingText', nome: t('comp.floatingText'), icon: '✨', unico: true }
@@ -3935,6 +4777,8 @@ class EditorPrincipal {
                     this.adicionarScript(ent, 'ataqueMelee');
                 } else if (tipo === 'ScriptComponent_Respawn') {
                     this.adicionarScript(ent, 'respawn');
+                } else if (tipo === 'ScriptComponent_Inventory') {
+                    this.adicionarScript(ent, 'inventoryControl');
                 }
                 // Componentes
                 else if (tipo === 'SpriteComponent') {
@@ -3979,6 +4823,14 @@ class EditorPrincipal {
                     const ui = new UIComponent();
                     ui.inicializar(ent);
                     ent.adicionarComponente('UIComponent', ui);
+                } else if (tipo === 'InventoryComponent') {
+                    const inv = new InventoryComponent();
+                    inv.inicializar(ent);
+                    ent.adicionarComponente('InventoryComponent', inv);
+                } else if (tipo === 'ItemComponent') {
+                    const item = new ItemComponent();
+                    item.inicializar(ent);
+                    ent.adicionarComponente('ItemComponent', item);
                 }
 
                 this.atualizarPainelPropriedades();
@@ -4222,6 +5074,10 @@ class EditorPrincipal {
                             componente = new ParticleEmitterComponent();
                         } else if (dadosComp.tipo === 'UIComponent') {
                             componente = new UIComponent();
+                        } else if (dadosComp.tipo === 'InventoryComponent') {
+                            componente = new InventoryComponent();
+                        } else if (dadosComp.tipo === 'ItemComponent') {
+                            componente = new ItemComponent();
                         }
 
                         // Deserializar dados do componente se possível
@@ -4443,6 +5299,7 @@ class EditorPrincipal {
                     <option value="morteAnimacao">💀 Morte com Animação</option>
                     <option value="simuladorMorte">🔧 Simulador de Morte (DEBUG)</option>
                     <option value="textoFlutuante">Plugin: Texto Flutuante</option>
+                    <option value="inventoryControl">Controlador de Inventário</option>
                     <option value="interacao">Sistema de Interação (NPC/Placa)</option>
                     <option value="vazio">Script Vazio</option>
                 </select>
@@ -4514,6 +5371,9 @@ class EditorPrincipal {
         } else if (tipo === 'interacao') {
             scriptComp.nome = 'Sistema de Interação';
             codigo = gerador.gerarScriptInteracao();
+        } else if (tipo === 'inventoryControl') {
+            scriptComp.nome = 'Controlador de Inventário';
+            codigo = gerador.gerarControladorInventario();
         } else {
             const timestamp = Date.now();
             scriptComp.nome = 'Script Customizado';
@@ -4671,9 +5531,17 @@ class EditorPrincipal {
 
                         // CRÍTICO: Recriar componentes manualmente (Importante para carregar projeto externo)
                         if (dado.componentes) {
-                            const listaComponentes = Array.isArray(dado.componentes)
+                            let listaComponentes = Array.isArray(dado.componentes)
                                 ? dado.componentes
                                 : Object.values(dado.componentes);
+
+                            // CRÍTICO: Ordenar para garantir que ScriptComponent seja o ÚLTIMO
+                            // Isso permite que o script acesse outros componentes (UI, Sprite, etc) no constructor/inicializar
+                            listaComponentes.sort((a, b) => {
+                                if (a.tipo === 'ScriptComponent' && b.tipo !== 'ScriptComponent') return 1;
+                                if (a.tipo !== 'ScriptComponent' && b.tipo === 'ScriptComponent') return -1;
+                                return 0;
+                            });
 
                             for (const dadosComp of listaComponentes) {
                                 let componente = null;
@@ -4690,6 +5558,8 @@ class EditorPrincipal {
                                     else if (dadosComp.tipo === 'CheckpointComponent') componente = new CheckpointComponent();
                                     else if (dadosComp.tipo === 'ParticleEmitterComponent') componente = new ParticleEmitterComponent();
                                     else if (dadosComp.tipo === 'UIComponent') componente = new UIComponent();
+                                    else if (dadosComp.tipo === 'InventoryComponent') componente = new InventoryComponent();
+                                    else if (dadosComp.tipo === 'ItemComponent') componente = new ItemComponent();
 
                                     // Deserializar dados
                                     if (componente) {
@@ -4710,6 +5580,15 @@ class EditorPrincipal {
                                         } else {
                                             ent.adicionarComponente(componente);
                                         }
+                                        // REMOVED NESTED HEADER
+                                        // REMOVED BODY START
+
+
+
+                                        // REMOVED RECONSTRUCTION
+
+
+
                                     }
                                 } catch (err) {
                                     console.warn(`Erro ao carregar componente ${dadosComp.tipo} do projeto:`, err);
@@ -4808,6 +5687,108 @@ class EditorPrincipal {
 
         consoleContent.appendChild(logDiv);
         consoleContent.scrollTop = consoleContent.scrollHeight;
+    }
+
+    /**
+     * Cola a entidade da área de transferência
+     */
+    colarEntidade() {
+        if (!this.clipboard) return;
+
+        try {
+            const dados = JSON.parse(this.clipboard);
+            // Gerar novo ID único
+            dados.id = 'ent_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+
+            // Deslocar posição para ver a cópia
+            dados.x += 32;
+            dados.y += 32;
+
+            // FIX: Usar método estático corretamente
+            const novaEntidade = Entidade.desserializar(dados);
+            novaEntidade.engine = this.engine;
+
+            // --- RECONSTRUÇÃO DE COMPONENTES ---
+            if (dados.componentes) {
+                let listaComponentes = Array.isArray(dados.componentes)
+                    ? dados.componentes
+                    : Object.values(dados.componentes);
+
+                // Ordenar para garantir que ScriptComponent seja o último
+                listaComponentes.sort((a, b) => {
+                    if (a.tipo === 'ScriptComponent' && b.tipo !== 'ScriptComponent') return 1;
+                    if (a.tipo !== 'ScriptComponent' && b.tipo === 'ScriptComponent') return -1;
+                    return 0;
+                });
+
+                for (const dadosComp of listaComponentes) {
+                    let componente = null;
+                    try {
+                        // Factory de componentes (Manual mapping)
+                        if (dadosComp.tipo === 'SpriteComponent') componente = new SpriteComponent();
+                        else if (dadosComp.tipo === 'CollisionComponent') componente = new CollisionComponent();
+                        else if (dadosComp.tipo === 'ScriptComponent') componente = new ScriptComponent();
+                        else if (dadosComp.tipo === 'TilemapComponent') componente = new TilemapComponent();
+                        else if (dadosComp.tipo === 'CameraFollowComponent') componente = new CameraFollowComponent();
+                        else if (dadosComp.tipo === 'ParallaxComponent') componente = new ParallaxComponent();
+                        else if (dadosComp.tipo === 'DialogueComponent') componente = new DialogueComponent();
+                        else if (dadosComp.tipo === 'KillZoneComponent') componente = new KillZoneComponent();
+                        else if (dadosComp.tipo === 'CheckpointComponent') componente = new CheckpointComponent();
+                        else if (dadosComp.tipo === 'ParticleEmitterComponent') componente = new ParticleEmitterComponent();
+                        else if (dadosComp.tipo === 'UIComponent') componente = new UIComponent();
+                        else if (dadosComp.tipo === 'InventoryComponent') componente = new InventoryComponent();
+                        else if (dadosComp.tipo === 'ItemComponent') componente = new ItemComponent();
+                        else if (dadosComp.tipo === 'LightComponent') componente = new LightComponent();
+
+                        // Deserializar dados do componente
+                        if (componente) {
+                            const dadosConfig = dadosComp.config || dadosComp;
+
+                            if (componente.desserializar && dadosConfig) {
+                                componente.desserializar(dadosConfig);
+                            } else if (dadosComp.config) {
+                                Object.assign(componente, dadosComp.config);
+                            } else {
+                                Object.assign(componente, dadosComp);
+                            }
+
+                            // FIX: Usar ID único para scripts
+                            if (componente.tipo === 'ScriptComponent') {
+                                const scriptId = `script_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+                                novaEntidade.adicionarComponente(scriptId, componente);
+                            } else {
+                                novaEntidade.adicionarComponente(componente);
+                            }
+                        }
+                    } catch (err) {
+                        console.warn(`Erro ao colar componente ${dadosComp.tipo}:`, err);
+                    }
+                }
+            }
+
+            // Ajustar Hierarquia (Pasta)
+            if (dados.pastaId && !this.pastas.some(p => p.id === dados.pastaId)) {
+                dados.pastaId = null;
+                novaEntidade.pastaId = null;
+            }
+
+            // Adicionar à lista e engine
+            this.entidades.push(novaEntidade);
+            this.engine.adicionarEntidade(novaEntidade);
+
+            // Selecionar nova entidade
+            this.selecionarEntidade(novaEntidade);
+            this.atualizarHierarquia();
+            this.log('Entidade clonada e colada com sucesso!', 'success');
+
+            // UNDO: Register Create Command
+            const cmd = new CmdCreateEntity(novaEntidade);
+            this.history.execute(cmd);
+
+        } catch (e) {
+            console.error('Erro ao colar entidade:', e);
+            this.log('Erro ao colar: ' + e.message, 'error');
+        }
     }
 }
 

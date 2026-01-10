@@ -154,6 +154,8 @@ export default class UIComponent {
                     this.desenharImagem(ctx, renderizador, el, x, y);
                 } else if (el.tipo === 'texto') {
                     this.desenharTexto(ctx, el, x, y, valorAtual, valorMax);
+                } else if (el.tipo === 'inventario') {
+                    this.desenharInventario(ctx, renderizador, el, x, y);
                 }
 
                 // DEBUG EDITOR: Desenhar borda se estiver selecionado para facilitar identificação
@@ -231,11 +233,213 @@ export default class UIComponent {
         }
     }
 
+    _getImgHelper(assetManager, id) {
+        if (!assetManager || !id) return null;
+        if (typeof assetManager.obterImagem === 'function') {
+            return assetManager.obterImagem(id);
+        } else if (typeof assetManager.obterAsset === 'function') {
+            const asset = assetManager.obterAsset(id);
+            return asset ? asset.imagem : null;
+        }
+        return null;
+    }
+
+    desenharInventario(ctx, renderizador, el, x, y) {
+        // Busca componente de inventário
+        let inventario = null;
+
+        // Se usar player global
+        if (this.usarPlayerGlobal && this.entidade.engine) {
+            const player = this.entidade.engine.entidades.find(e =>
+                (e.tags && e.tags.some(t => t.toLowerCase() === 'player')) ||
+                (e.nome && e.nome.toLowerCase() === 'player')
+            );
+            if (player) inventario = player.obterComponente('InventoryComponent');
+        } else {
+            inventario = this.entidade.obterComponente('InventoryComponent');
+        }
+
+        // Configurações Básicas
+        const baseSlotSize = el.altura || 32;
+        const baseSpacing = el.espacamento || 5;
+        const slots = inventario ? inventario.slots : 20;
+        const items = inventario ? inventario.items : [];
+
+        // Configurações Avançadas
+        const scale = this.inventoryScale || 1.0;
+        const cols = this.inventoryCols || 5;
+        const rows = this.inventoryRows || 4;
+
+        const slotSize = baseSlotSize * scale;
+        const spacing = baseSpacing * scale;
+        const padding = spacing; // Padding interno da borda
+
+        const assetManager = renderizador.engine ? renderizador.engine.assetManager : null;
+
+        // 1. Desenhar Moldura (9-Slice)
+        const contentW = (cols * slotSize) + ((cols - 1) * spacing);
+        const contentH = (rows * slotSize) + ((rows - 1) * spacing);
+        const totalW = contentW + (padding * 2);
+        const totalH = contentH + (padding * 2);
+
+        if (this.borderTopLeft || this.borderTop) {
+            const bSize = 16 * scale;
+            const tl = this._getImgHelper(assetManager, this.borderTopLeft);
+            const t = this._getImgHelper(assetManager, this.borderTop);
+            const tr = this._getImgHelper(assetManager, this.borderTopRight);
+            const l = this._getImgHelper(assetManager, this.borderLeft);
+            const r = this._getImgHelper(assetManager, this.borderRight);
+            const bl = this._getImgHelper(assetManager, this.borderBottomLeft);
+            const b = this._getImgHelper(assetManager, this.borderBottom);
+            const br = this._getImgHelper(assetManager, this.borderBottomRight);
+
+            ctx.fillStyle = el.corFundo || 'rgba(0,0,0,0.8)';
+            ctx.fillRect(x + bSize / 2, y + bSize / 2, totalW - bSize, totalH - bSize);
+
+            if (tl) ctx.drawImage(tl, x - bSize, y - bSize, bSize, bSize);
+            if (tr) ctx.drawImage(tr, x + totalW, y - bSize, bSize, bSize);
+            if (bl) ctx.drawImage(bl, x - bSize, y + totalH, bSize, bSize);
+            if (br) ctx.drawImage(br, x + totalW, y + totalH, bSize, bSize);
+
+            if (t) ctx.drawImage(t, x, y - bSize, totalW, bSize);
+            if (b) ctx.drawImage(b, x, y + totalH, totalW, bSize);
+            if (l) ctx.drawImage(l, x - bSize, y, bSize, totalH);
+            if (r) ctx.drawImage(r, x + totalW, y, bSize, totalH);
+        } else {
+            if (el.corFundo) {
+                ctx.fillStyle = el.corFundo;
+                ctx.fillRect(x - padding, y - padding, totalW, totalH);
+            }
+        }
+
+        // Desenhar slots
+        for (let i = 0; i < slots; i++) {
+            if (i >= cols * rows) break;
+
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+
+            const slotX = x + (col * (slotSize + spacing));
+            const slotY = y + (row * (slotSize + spacing));
+
+            // Fundo do Slot (Imagem ou Retângulo)
+            const assetManager = renderizador.engine ? renderizador.engine.assetManager : null;
+            let desenhouImagem = false;
+
+            // 1. Imagem Base (Slot Vazio)
+            // Prioridade: Elemento -> Componente (Global)
+            const imgSlotId = el.imagemSlot || this.imagemSlot;
+            // console.log('[UI Debug] Slot', i, 'ImgID:', imgSlotId); // DEBUG
+
+            if (imgSlotId) {
+                const imgSlot = this._getImgHelper(assetManager, imgSlotId);
+
+                if (imgSlot) {
+                    try {
+                        ctx.drawImage(imgSlot, slotX, slotY, slotSize, slotSize);
+                        desenhouImagem = true;
+                    } catch (e) {
+                        // Fallback silencioso
+                    }
+                }
+            }
+
+            // 2. Imagem Cheio (Se tiver item) - Opcional, desenha por cima
+            const temItem = inventario && items[i];
+            const imgCheioId = el.imagemSlotCheio || this.imagemSlotCheio;
+
+            if (temItem && imgCheioId) {
+                const imgCheio = this._getImgHelper(assetManager, imgCheioId);
+
+                if (imgCheio) {
+                    try {
+                        ctx.drawImage(imgCheio, slotX, slotY, slotSize, slotSize);
+                        desenhouImagem = true;
+                    } catch (e) {
+                        // Silencioso
+                    }
+                }
+            }
+
+            if (!desenhouImagem) {
+                ctx.fillStyle = el.corFundo || 'rgba(0,0,0,0.5)';
+                ctx.strokeStyle = el.corBorda || '#666';
+                ctx.lineWidth = 1;
+
+                ctx.fillRect(slotX, slotY, slotSize, slotSize);
+                ctx.strokeRect(slotX, slotY, slotSize, slotSize);
+            }
+
+            // Item (se houver)
+            // Se inventário for mock (ou seja, null), podemos desenhar um placeholder no editor se quiser
+            // Item (se houver)
+            // Se inventário for mock (ou seja, null), podemos desenhar um placeholder no editor se quiser
+            if (inventario && items[i]) {
+                const item = items[i];
+                let desenhouIcone = false;
+
+                // 1. Tentar desenhar Ícone Customizado ou pelo ID
+                const iconToUse = item.icon || item.id;
+
+                if (iconToUse) {
+                    const imgIcon = this._getImgHelper(assetManager, iconToUse);
+                    if (imgIcon) {
+                        try {
+                            // Desenha centralizado, um pouco menor que o slot (80%?)
+                            const iconSize = slotSize * 0.8;
+                            const offset = (slotSize - iconSize) / 2;
+                            ctx.drawImage(imgIcon, slotX + offset, slotY + offset, iconSize, iconSize);
+                            desenhouIcone = true;
+                        } catch (e) {
+                            // Erro ao desenhar
+                        }
+                    }
+                }
+
+                // 2. Fallback: Bolinha Colorida
+                if (!desenhouIcone) {
+                    ctx.fillStyle = item.cor || el.corPreenchimento || '#ffd700'; // Dourado default
+                    ctx.beginPath();
+                    ctx.arc(slotX + slotSize / 2, slotY + slotSize / 2, slotSize / 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Quantidade
+                if (item.qtd > 1) {
+                    ctx.fillStyle = '#fff';
+                    ctx.font = `${10 * scale}px monospace`;
+                    ctx.textAlign = 'right';
+                    ctx.fillText(item.qtd, slotX + slotSize - (2 * scale), slotY + slotSize - (2 * scale));
+                }
+            } else if (!inventario && this.entidade.selecionada) {
+                // Mock editor visual
+                ctx.fillStyle = '#333';
+                ctx.textAlign = 'center';
+                ctx.fillText(i + 1, slotX + slotSize / 2, slotY + slotSize / 2 + (4 * scale));
+            }
+        }
+    }
+
     serializar() {
         return {
             tipo: 'UIComponent',
             renderMode: this.renderMode,
             usarPlayerGlobal: this.usarPlayerGlobal,
+            imagemSlot: this.imagemSlot,
+            imagemSlotCheio: this.imagemSlotCheio,
+            // Advanced Inventory
+            inventoryScale: this.inventoryScale || 1.0,
+            inventoryCols: this.inventoryCols || 5, // Agora Colunas (antes fixo 5)
+            inventoryRows: this.inventoryRows || 4, // Linhas
+            // 8 Bordas
+            borderTopLeft: this.borderTopLeft,
+            borderTop: this.borderTop,
+            borderTopRight: this.borderTopRight,
+            borderLeft: this.borderLeft,
+            borderRight: this.borderRight,
+            borderBottomLeft: this.borderBottomLeft,
+            borderBottom: this.borderBottom,
+            borderBottomRight: this.borderBottomRight,
             elementos: this.elementos
         };
     }
@@ -243,6 +447,23 @@ export default class UIComponent {
     desserializar(dados) {
         this.renderMode = dados.renderMode || 'world';
         this.usarPlayerGlobal = dados.usarPlayerGlobal || false;
+        this.imagemSlot = dados.imagemSlot || null;
+        this.imagemSlotCheio = dados.imagemSlotCheio || null;
+
+        // Advanced Inventory
+        this.inventoryScale = dados.inventoryScale !== undefined ? dados.inventoryScale : 1.0;
+        this.inventoryCols = dados.inventoryCols || 5;
+        this.inventoryRows = dados.inventoryRows || 4;
+
+        this.borderTopLeft = dados.borderTopLeft || null;
+        this.borderTop = dados.borderTop || null;
+        this.borderTopRight = dados.borderTopRight || null;
+        this.borderLeft = dados.borderLeft || null;
+        this.borderRight = dados.borderRight || null;
+        this.borderBottomLeft = dados.borderBottomLeft || null;
+        this.borderBottom = dados.borderBottom || null;
+        this.borderBottomRight = dados.borderBottomRight || null;
+
         this.elementos = dados.elementos || [];
     }
 }

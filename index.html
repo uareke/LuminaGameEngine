@@ -40,6 +40,9 @@
                     style="border-color: #444; color: #666; opacity: 0.7;">
                     👁️
                 </button>
+                <button class="btn-tool" id="btn-camera-reset" title="Resetar Câmera (Home)">
+                    🎯
+                </button>
             </div>
 
             <!-- Grupo: Controles de Execução -->
@@ -54,11 +57,15 @@
 
             <!-- Grupo: Ações de Projeto -->
             <div class="toolbar-group">
-                <button class="btn-new" id="btn-new" title="Novo Projeto"><span data-i18n="menu.new">Novo</span></button>
-                <button class="btn-load" id="btn-load" title="Carregar"><span data-i18n="menu.open">Carregar</span></button>
-                <button class="btn-save" id="btn-save" title="Salvar (Ctrl+S)"><span data-i18n="menu.save">Salvar</span></button>
+                <button class="btn-new" id="btn-new" title="Novo Projeto"><span
+                        data-i18n="menu.new">Novo</span></button>
+                <button class="btn-load" id="btn-load" title="Carregar"><span
+                        data-i18n="menu.open">Carregar</span></button>
+                <button class="btn-save" id="btn-save" title="Salvar (Ctrl+S)"><span
+                        data-i18n="menu.save">Salvar</span></button>
                 <input type="file" id="input-load-project" style="display:none" accept=".json">
-                <button class="btn-export" id="btn-export" title="Exportar"><span data-i18n="menu.export">Exportar</span></button>
+                <button class="btn-export" id="btn-export" title="Exportar"><span
+                        data-i18n="menu.export">Exportar</span></button>
                 <button class="btn-scene-settings" id="btn-scene-settings"
                     title="Configurações da Cena (Cor de Fundo)"><span data-i18n="panel.scene">Cena</span></button>
                 <button class="btn-settings" id="btn-settings" title="Configuraciones">
@@ -77,11 +84,11 @@
                 </div>
                 <div class="modal-body">
                     <!-- Seletor de Idioma -->
-                     <div class="form-group">
+                    <div class="form-group">
                         <label data-i18n="settings.language">Idioma</label>
-                         <div id="language-selector-container"></div>
-                     </div>
-                    
+                        <div id="language-selector-container"></div>
+                    </div>
+
                     <div class="form-group">
                         <label data-i18n="settings.gridSize">Tamanho da Grid (px)</label>
                         <input type="number" id="conf-grid-size" value="50" min="8" max="128" step="8">
@@ -178,7 +185,8 @@
                 </div>
                 <div class="propriedades-content" id="propriedades-content">
                     <div class="prop-empty">
-                        <p><span data-i18n="panel.properties.noSelection">Selecione uma entidade para editar suas propriedades</span></p>
+                        <p><span data-i18n="panel.properties.noSelection">Selecione uma entidade para editar suas
+                                propriedades</span></p>
                     </div>
                 </div>
             </div>
@@ -494,6 +502,11 @@
                 <button id="btn-startup-load" class="btn-full"
                     style="display: block; width: 100%; padding: 15px; font-size: 16px; background: transparent; color: #c9a0ff; cursor: pointer; border: 2px solid #c9a0ff; border-radius: 8px; transition: all 0.3s;">
                     📂 Carregar Projeto
+                </button>
+
+                <button id="btn-startup-demo" class="btn-full"
+                    style="display: block; width: 100%; margin-top: 15px; padding: 15px; font-size: 16px; background: rgba(52, 152, 219, 0.2); color: #3498db; cursor: pointer; border: 2px solid #3498db; border-radius: 8px; transition: all 0.3s; box-shadow: 0 0 10px rgba(52, 152, 219, 0.1);">
+                    🎮 Jogo Demo
                 </button>
             </div>
         </div>
