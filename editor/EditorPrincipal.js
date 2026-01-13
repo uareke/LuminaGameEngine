@@ -2578,23 +2578,7 @@ class EditorPrincipal {
             componentsHtml += createComponentHtml('CollisionComponent', 'Box Collider 2D', '📦', '#2ecc71', colHtml, true);
         }
 
-        // 2.5 CameraFollowComponent
-        const camComp = ent.obterComponente('CameraFollowComponent');
-        if (camComp) {
-            const camHtml = `
-                <div style="display:flex; gap:5px;">
-                    <div style="flex:1;">
-                       <label style="font-size:10px; color:#aaa;">Smooth</label>
-                       <input type="number" step="0.01" value="${camComp.smoothSpeed}" class="plugin-prop" data-plugin="CameraFollowComponent" data-prop="smoothSpeed" style="width:100%; background:#111; color:white; border:1px solid #444;">
-                   </div>
-                    <div style="flex:1;">
-                       <label style="font-size:10px; color:#aaa;">Offset Y</label>
-                       <input type="number" value="${camComp.offsetY}" class="plugin-prop" data-plugin="CameraFollowComponent" data-prop="offsetY" style="width:100%; background:#111; color:white; border:1px solid #444;">
-                   </div>
-                </div>
-            `;
-            componentsHtml += createComponentHtml('CameraFollowComponent', 'Camera Follow', '🎥', '#3498db', camHtml, true);
-        }
+
 
         // 2.7 TilemapComponent
         const tileComp = ent.obterComponente('TilemapComponent');
@@ -2739,22 +2723,34 @@ class EditorPrincipal {
                                 <input type="number" step="1" value="${layer.yOffset || 0}" class="parallax-layer-prop" data-index="${index}" data-prop="yOffset" style="width:100%; background:#111; color:white; border:1px solid #444;">
                             </div>
                         </div>
-                         <div style="display:flex; gap:10px; margin-top:5px; align-items:center;">
-                            <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;">
-                                <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="repeatX" ${(layer.repeatX !== false) ? 'checked' : ''}> Rep X
-                            </label>
-                            <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;">
-                                <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="repeatY" ${(layer.repeatY) ? 'checked' : ''}> Rep Y
-                            </label>
-                             <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;">
-                                <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="fitHeight" ${(layer.fitHeight) ? 'checked' : ''}> Fit H
-                            </label>
-                             <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;">
-                                <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="fitScreen" ${(layer.fitScreen) ? 'checked' : ''}> Fit SCREEN
-                            </label>
-                             <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;">
-                                <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="fitCover" ${(layer.fitCover) ? 'checked' : ''}> COVER
-                            </label>
+                        <!-- New Layout: Groups -->
+                         <div style="margin-top:8px; padding-top:5px; border-top:1px dashed #333;">
+                            <div style="margin-bottom:5px;">
+                                <div style="font-size:9px; color:#888; margin-bottom:2px;">Repetição</div>
+                                <div style="display:flex; gap:10px;">
+                                    <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;">
+                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="repeatX" ${(layer.repeatX !== false) ? 'checked' : ''}> Horizontal (X)
+                                    </label>
+                                    <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;">
+                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="repeatY" ${(layer.repeatY) ? 'checked' : ''}> Vertical (Y)
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div style="margin-bottom:5px;">
+                                <div style="font-size:9px; color:#888; margin-bottom:2px;">Ajuste de Tela</div>
+                                 <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                                    <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;" title="Ajusta altura ao jogo">
+                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="fitHeight" ${(layer.fitHeight) ? 'checked' : ''}> Altura
+                                    </label>
+                                     <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;" title="Cobre a tela inteira">
+                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="fitScreen" ${(layer.fitScreen) ? 'checked' : ''}> Tela Cheia
+                                    </label>
+                                     <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;" title="Modo Cover (CSS Style)">
+                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="fitCover" ${(layer.fitCover) ? 'checked' : ''}> Cover
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -3051,6 +3047,29 @@ class EditorPrincipal {
                 </div>
             </div>`;
             componentsHtml += createComponentHtml('InventoryComponent', 'Inventário (Player)', '🎒', '#f39c12', invHtml, true);
+        }
+
+        // 2.15 CameraFollowComponent
+        const camFollow = ent.obterComponente('CameraFollowComponent');
+        if (camFollow) {
+            let camHtml = `
+            <div style="background:#222; padding:5px; border-radius:4px; margin-bottom:5px;">
+                <div style="margin-bottom:5px;">
+                     <label style="font-size:10px; color:#aaa;">Suavidade (0-1) - Menor = Mais Lento</label>
+                     <input type="number" step="0.01" min="0.01" max="1.0" value="${camFollow.smoothSpeed}" class="plugin-prop" data-plugin="CameraFollowComponent" data-prop="smoothSpeed" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px;">
+                </div>
+                <div style="display:flex; gap:5px;">
+                    <div style="flex:1;">
+                         <label style="font-size:10px; color:#aaa;">Offset X (Horizontal)</label>
+                         <input type="number" value="${camFollow.offsetX}" class="plugin-prop" data-plugin="CameraFollowComponent" data-prop="offsetX" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px;">
+                    </div>
+                    <div style="flex:1;">
+                         <label style="font-size:10px; color:#aaa;">Offset Y (Vertical)</label>
+                         <input type="number" value="${camFollow.offsetY}" class="plugin-prop" data-plugin="CameraFollowComponent" data-prop="offsetY" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px;">
+                    </div>
+                </div>
+            </div>`;
+            componentsHtml += createComponentHtml('CameraFollowComponent', 'Camera Follow', '🎥', '#9b59b6', camHtml, true);
         }
 
         // 2.15 ItemComponent

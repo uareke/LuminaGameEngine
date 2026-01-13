@@ -1,5 +1,6 @@
 import Renderizador from './Renderizador.js';
 import LoopJogo from './LoopJogo.js';
+import Camera from './Camera.js';
 
 /**
  * Engine - Classe principal da game engine
@@ -10,6 +11,7 @@ class Engine {
         this.canvas = canvas;
         this.renderizador = new Renderizador(canvas);
         this.loopJogo = new LoopJogo(this);
+        this.camera = new Camera(canvas.width, canvas.height);
 
         // Entidades do jogo
         this.entidades = [];
@@ -104,6 +106,13 @@ class Engine {
         // Sincroniza modo debug com o renderizador
         if (this.debugMode !== undefined) {
             this.renderizador.debugMode = this.debugMode;
+        }
+
+        // Sincroniza Camera
+        if (this.camera && this.renderizador.camera) {
+            this.renderizador.camera.x = this.camera.x;
+            this.renderizador.camera.y = this.camera.y;
+            this.renderizador.camera.zoom = this.camera.zoom;
         }
 
         // Prepara lista de renderização ordenada por Z-Index
