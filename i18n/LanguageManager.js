@@ -187,6 +187,13 @@ class LanguageManager {
             }
         });
 
+        // Atualiza Titles (Tooltips)
+        document.querySelectorAll('[data-i18n-title]').forEach(element => {
+            const key = element.getAttribute('data-i18n-title');
+            const translation = this.t(key);
+            element.setAttribute('title', translation);
+        });
+
         console.log('[i18n] DOM atualizado com traduções');
     }
 }

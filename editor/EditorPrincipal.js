@@ -5,6 +5,7 @@
  */
 
 import Engine from '../engine/Engine.js';
+import i18n from '../i18n/LanguageManager.js';
 import Camera from '../engine/Camera.js';
 import Entidade from '../entidades/Entidade.js';
 import { EntidadeFactory } from '../entidades/EntidadeFactory.js';
@@ -42,6 +43,14 @@ class EditorPrincipal {
 
         // Expor instância globalmente (útil para debug e callbacks HTML)
         window.editor = this;
+
+        // Escutar mudanças de idioma para atualizar interfaces geradas via JS
+        if (i18n) {
+            i18n.onLanguageChange(() => {
+                this.atualizarPainelPropriedades();
+                this.log(`Idioma alterado: ${i18n.getCurrentLanguage()}`, 'info');
+            });
+        }
 
         // Estado do editor
         this.estadoInicial = null; // Snapshot da cena antes do play
@@ -2313,30 +2322,30 @@ class EditorPrincipal {
             <div class="prop-core-header" style="background:#1a1a2e; padding:10px; border-bottom:1px solid #444; margin-bottom:10px;">
                 <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
                     <div style="flex:1; margin-right:10px;">
-                         <label style="font-size:10px; color:#aaa; display:block;"><span data-i18n="properties.name">Nome</span></label>
+                         <label style="font-size:10px; color:#aaa; display:block;">${i18n.t('properties.name')}</label>
                          <input type="text" id="prop-nome" value="${ent.nome}" style="width:100%; background:#111; border:1px solid #444; color:white; padding:4px;">
                     </div>
                     <div style="width:30px;">
-                        <label style="font-size:10px; color:#aaa; display:block;"><span data-i18n="properties.enabled">Ativo</span></label>
+                        <label style="font-size:10px; color:#aaa; display:block;">${i18n.t('properties.enabled')}</label>
                         <input type="checkbox" id="prop-enabled" ${!ent.locked ? 'checked' : ''}>
                     </div>
                 </div>
                  <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
                     <div style="flex:1; margin-right:10px;">
-                         <label style="font-size:10px; color:#aaa; display:block;">ID</label>
+                         <label style="font-size:10px; color:#aaa; display:block;">${i18n.t('entity.id')}</label>
                          <input type="text" value="${ent.id}" disabled style="width:100%; background:#222; border:1px solid #333; color:#666; padding:4px; font-size:10px;">
                     </div>
                     <div style="flex:1;">
-                         <label style="font-size:10px; color:#aaa; display:block;">Tipo</label>
+                         <label style="font-size:10px; color:#aaa; display:block;">${i18n.t('entity.type')}</label>
                          <input type="text" value="${ent.tipo}" disabled style="width:100%; background:#222; border:1px solid #333; color:#666; padding:4px; font-size:10px;">
                     </div>
                  </div>
                  <div style="display:flex; justify-content:space-between; margin-bottom:5px; align-items: center;">
                     <div style="flex:1; margin-right:10px;">
-                        <label style="font-size:10px; color:#aaa; display:block;">Ordem (Z)</label>
+                        <label style="font-size:10px; color:#aaa; display:block;">${i18n.t('entity.zIndex')}</label>
                         <div style="display:flex; gap:5px;">
-                            <button id="btn-order-back" style="flex:1; font-size:10px; background:#222; border:1px solid #444; color:#ccc; cursor:pointer;" title="Mover para Trás (Desenhar Primeiro)">⬇️ Fundo</button>
-                            <button id="btn-order-front" style="flex:1; font-size:10px; background:#222; border:1px solid #444; color:#ccc; cursor:pointer;" title="Mover para Frente (Desenhar Por Último)">⬆️ Frente</button>
+                            <button id="btn-order-back" style="flex:1; font-size:10px; background:#222; border:1px solid #444; color:#ccc; cursor:pointer;" title="Mover para Trás (Desenhar Primeiro)">${i18n.t('entity.orderBack')}</button>
+                            <button id="btn-order-front" style="flex:1; font-size:10px; background:#222; border:1px solid #444; color:#ccc; cursor:pointer;" title="Mover para Frente (Desenhar Por Último)">${i18n.t('entity.orderFront')}</button>
                         </div>
                     </div>
                  </div>
@@ -2345,31 +2354,31 @@ class EditorPrincipal {
             <!-- Transform Component (Always Visible) -->
            <div class="component-box" style="background:#2d2d3f; margin-bottom:2px; border-radius:4px; overflow:hidden;">
                 <div class="component-header ${getState('transform')}" data-section="transform" style="background:#3d3d55; padding:5px 10px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; user-select:none;">
-                    <span style="font-weight:bold; font-size:12px; color:#ddd;">🔧 Transform</span>
+                    <span style="font-weight:bold; font-size:12px; color:#ddd;">🔧 ${i18n.t('transform.title')}</span>
                     <span style="font-size:10px; color:#aaa;">▼</span>
                 </div>
                 <div class="component-body" style="padding:10px; display:${getState('transform') === 'collapsed' ? 'none' : 'block'};">
                     <div style="display:flex; gap:5px; margin-bottom:5px;">
                         <div style="flex:1;">
-                            <label style="font-size:10px; color:#aaa;">Pos X</label>
+                            <label style="font-size:10px; color:#aaa;">${i18n.t('transform.posX')}</label>
                             <input type="number" id="prop-x" value="${Math.round(ent.x)}" step="1" style="width:100%; background:#111; color:white; border:1px solid #444; padding:2px;">
                         </div>
                         <div style="flex:1;">
-                            <label style="font-size:10px; color:#aaa;">Pos Y</label>
+                            <label style="font-size:10px; color:#aaa;">${i18n.t('transform.posY')}</label>
                             <input type="number" id="prop-y" value="${Math.round(ent.y)}" step="1" style="width:100%; background:#111; color:white; border:1px solid #444; padding:2px;">
                         </div>
                          <div style="flex:1;">
-                            <label style="font-size:10px; color:#aaa;">Rot °</label>
+                            <label style="font-size:10px; color:#aaa;">${i18n.t('transform.rot')}</label>
                             <input type="number" id="prop-rot" value="${Math.round(ent.rotacao)}" step="15" style="width:100%; background:#111; color:white; border:1px solid #444; padding:2px;">
                         </div>
                     </div>
                      <div style="display:flex; gap:5px;">
                         <div style="flex:1;">
-                            <label style="font-size:10px; color:#aaa;">Largura</label>
+                            <label style="font-size:10px; color:#aaa;">${i18n.t('transform.width')}</label>
                             <input type="number" id="prop-largura" value="${ent.largura}" step="1" min="1" style="width:100%; background:#111; color:white; border:1px solid #444; padding:2px;">
                         </div>
                         <div style="flex:1;">
-                            <label style="font-size:10px; color:#aaa;">Altura</label>
+                            <label style="font-size:10px; color:#aaa;">${i18n.t('transform.height')}</label>
                             <input type="number" id="prop-altura" value="${ent.altura}" step="1" min="1" style="width:100%; background:#111; color:white; border:1px solid #444; padding:2px;">
                         </div>
                     </div>
@@ -2402,54 +2411,54 @@ class EditorPrincipal {
         // 2.1 Visual Component (Virtual)
         const visualHtml = `
              <div style="margin-bottom:5px;">
-                <label style="font-size:10px; color:#aaa;">Cor Base</label>
+                <label style="font-size:10px; color:#aaa;">${i18n.t('visual.color')}</label>
                 <div style="display:flex; gap:5px;">
                     <input type="color" id="prop-cor" value="${ent.cor}" style="height:24px; flex:1; padding:0; background:none; border:none;">
                     <input type="text" value="${ent.cor}" style="flex:2; background:#111; border:1px solid #444; color:white; font-size:11px; padding:2px;">
                 </div>
             </div>
             <div>
-                 <label style="font-size:10px; color:#aaa;">Opacidade (${Math.round(ent.opacidade * 100)}%)</label>
+                 <label style="font-size:10px; color:#aaa;">${i18n.t('visual.opacity')} (${Math.round(ent.opacidade * 100)}%)</label>
                  <input type="range" id="prop-opacidade" min="0" max="1" step="0.1" value="${ent.opacidade}" style="width:100%;">
             </div>
             <div style="margin-top:5px; display:flex; align-items:center;">
                  <input type="checkbox" id="prop-visible" ${ent.visivel ? 'checked' : ''} style="margin-right:5px;">
-                 <label style="font-size:11px; color:#ccc;" for="prop-visible">Visível (Render)</label>
+                 <label style="font-size:11px; color:#ccc;" for="prop-visible">${i18n.t('visual.visible')}</label>
             </div>
              <div style="margin-top:5px;">
-                  <label style="font-size:10px; color:#aaa;">Profundidade (Z-Index)</label>
+                  <label style="font-size:10px; color:#aaa;">${i18n.t('visual.depth')}</label>
                   <input type="number" id="prop-zindex" value="${ent.zIndex || 0}" step="1" style="width:100%; background:#111; color:white; border:1px solid #444; padding:2px;">
              </div>
         `;
-        componentsHtml += createComponentHtml('visual', 'Visual', '🎨', '#4ecdc4', visualHtml);
+        componentsHtml += createComponentHtml('visual', i18n.t('visual.title'), '🎨', '#4ecdc4', visualHtml);
 
         // 2.2 Physics Component (Virtual)
         const fisicaHtml = `
              <div style="display:flex; flex-direction:column; gap:8px;">
                  <div style="display:flex; align-items:center;">
                     <input type="checkbox" id="prop-gravidade" ${ent.temGravidade ? 'checked' : ''}>
-                    <label style="font-size:11px; color:#ccc; margin-left:5px;">Aplicar Gravidade</label>
+                    <label style="font-size:11px; color:#ccc; margin-left:5px;">${i18n.t('physics.gravity')}</label>
                 </div>
                  <div style="display:flex; align-items:center;">
                     <input type="checkbox" id="prop-solido" ${ent.solido ? 'checked' : ''}>
-                    <label style="font-size:11px; color:#ccc; margin-left:5px;">Colisor Sólido (Chão)</label>
+                    <label style="font-size:11px; color:#ccc; margin-left:5px;">${i18n.t('physics.solid')}</label>
                 </div>
                  <div>
-                    <label style="font-size:10px; color:#aaa;">Velocidade Y (Info)</label>
+                    <label style="font-size:10px; color:#aaa;">${i18n.t('physics.velocityY')}</label>
                     <input type="number" value="${Math.round(ent.velocidadeY)}" disabled style="width:100%; background:#222; border:1px solid #333; color:#666;">
                 </div>
             </div>
         `;
-        componentsHtml += createComponentHtml('fisica', 'Physics Body', '⚛️', '#9b59b6', fisicaHtml);
+        componentsHtml += createComponentHtml('fisica', i18n.t('physics.title'), '⚛️', '#9b59b6', fisicaHtml);
 
         // 2.3 SpriteComponent
         const spriteComp = ent.obterComponente('SpriteComponent');
         if (spriteComp) {
             let spriteHtml = `
                  <div style="margin-bottom:10px;">
-                    <label style="font-size:10px; color:#aaa;">Source Asset</label>
+                    <label style="font-size:10px; color:#aaa;">${i18n.t('sprite.source')}</label>
                     <select id="prop-asset-sprite" style="width: 100%; padding: 4px; background: #111; color: white; border: 1px solid #444; font-size:11px;">
-                        <option value="">(Nenhum - Cor Sólida)</option>
+                        <option value="">${i18n.t('sprite.none')}</option>
                         ${this.assetManager ? this.assetManager.listarSprites().map(a =>
                 `<option value="${a.id}" ${(spriteComp.assetId === a.id) ? 'selected' : ''}>${a.nome}</option>`
             ).join('') : ''}
@@ -2462,7 +2471,7 @@ class EditorPrincipal {
                 const asset = this.assetManager.obterAsset(spriteComp.assetId);
                 if (asset && asset.categoria === 'animacao') {
                     spriteHtml += `<div style="background:#222; padding:5px; border-radius:4px; margin-bottom:5px;">`;
-                    spriteHtml += `<div style="margin-bottom:5px;"><label style="font-size:10px; color:#aaa;">Autoplay Anim</label>`;
+                    spriteHtml += `<div style="margin-bottom:5px;"><label style="font-size:10px; color:#aaa;">${i18n.t('sprite.autoplay')}</label>`;
                     spriteHtml += `<select class="prop-autoplay-anim" data-asset="${spriteComp.assetId}" style="width:100%; background:#333; color:white; border:none; font-size:10px;"><option value="">(None)</option>`;
                     for (const nomeAnim of Object.keys(asset.animacoes || {})) {
                         spriteHtml += `<option value="${nomeAnim}" ${spriteComp.autoplayAnim === nomeAnim ? 'selected' : ''}>${nomeAnim}</option>`;
@@ -2470,7 +2479,7 @@ class EditorPrincipal {
                     spriteHtml += `</select></div>`;
 
                     // Lista simplificada de animações draggable
-                    spriteHtml += `<div style="font-size:10px; color:#aaa; margin-bottom:2px;">Available Animations (Drag):</div>`;
+                    spriteHtml += `<div style="font-size:10px; color:#aaa; margin-bottom:2px;">${i18n.t('sprite.available')}</div>`;
                     spriteHtml += `<div style="display:flex; flex-wrap:wrap; gap:5px;">`;
                     for (const nome of Object.keys(asset.animacoes || {})) {
                         spriteHtml += `<div class="draggable-anim-source" draggable="true" data-anim-name="${nome}" style="background:#444; color:#fff; padding:2px 6px; border-radius:10px; font-size:10px; cursor:grab;">${nome}</div>`;
@@ -2480,7 +2489,7 @@ class EditorPrincipal {
             } else {
                 // Sem asset selecionado - mostra animações padrão sugeridas
                 spriteHtml += `<div style="background:#222; padding:5px; border-radius:4px; margin-bottom:5px;">`;
-                spriteHtml += `<div style="font-size:10px; color:#aaa; margin-bottom:5px;">💡 Standard Animations (Configure depois de adicionar Asset):</div>`;
+                spriteHtml += `<div style="font-size:10px; color:#aaa; margin-bottom:5px;">${i18n.t('sprite.animStandard')}</div>`;
                 spriteHtml += `<div style="display:flex; flex-wrap:wrap; gap:5px;">`;
 
                 // Animações padrão esperadas pelos scripts
@@ -2494,40 +2503,40 @@ class EditorPrincipal {
                     spriteHtml += `<div style="background:#333; color:#888; padding:2px 6px; border-radius:10px; font-size:10px; border:1px dashed #555;">${nome}</div>`;
                 }
                 spriteHtml += `</div>`;
-                spriteHtml += `<div style="font-size:9px; color:#666; margin-top:5px; font-style:italic;">Adicione um Asset de Sprite para configurar animações</div>`;
+                spriteHtml += `<div style="font-size:9px; color:#666; margin-top:5px; font-style:italic;">${i18n.t('sprite.animConfig')}</div>`;
                 spriteHtml += `</div>`;
             }
 
             spriteHtml += `
                <div style="display: flex; gap: 5px; margin-bottom: 5px;">
                     <div style="flex:1;">
-                        <label style="font-size:10px; color:#aaa;">Offset X</label>
+                        <label style="font-size:10px; color:#aaa;">${i18n.t('sprite.offsetX')}</label>
                         <input type="number" id="prop-offset-x" value="${spriteComp.offsetX}" style="width:100%; background:#111; color:white; border:1px solid #444;">
                     </div>
                     <div style="flex:1;">
-                        <label style="font-size:10px; color:#aaa;">Offset Y</label>
+                        <label style="font-size:10px; color:#aaa;">${i18n.t('sprite.offsetY')}</label>
                         <input type="number" id="prop-offset-y" value="${spriteComp.offsetY}" style="width:100%; background:#111; color:white; border:1px solid #444;">
                     </div>
                 </div>
                 <div style="display: flex; gap: 5px;">
                     <div style="flex:1;">
-                        <label style="font-size:10px; color:#aaa;">Scale X</label>
+                        <label style="font-size:10px; color:#aaa;">${i18n.t('sprite.scaleX')}</label>
                         <input type="number" id="prop-scale-x" value="${spriteComp.scaleX || 1.0}" step="0.1" style="width:100%; background:#111; color:white; border:1px solid #444;">
                     </div>
                     <div style="flex:1;">
-                        <label style="font-size:10px; color:#aaa;">Scale Y</label>
+                        <label style="font-size:10px; color:#aaa;">${i18n.t('sprite.scaleY')}</label>
                         <input type="number" id="prop-scale-y" value="${spriteComp.scaleY || 1.0}" step="0.1" style="width:100%; background:#111; color:white; border:1px solid #444;">
                     </div>
                 </div>
                 <div style="margin-top: 5px; padding-top: 5px; border-top: 1px dashed #444;">
                     <label style="font-size:11px; display:flex; align-items:center; gap:5px; color:#ddd;">
                         <input type="checkbox" id="prop-tiled" ${spriteComp.tiled ? 'checked' : ''}>
-                        Repetir (Tiled Mode)
+                        ${i18n.t('sprite.tiled')}
                     </label>
-                    <div style="font-size:9px; color:#666; margin-left: 18px;">Repete a imagem lado a lado. Ideal para Chao/Lava.</div>
+                    <div style="font-size:9px; color:#666; margin-left: 18px;">${i18n.t('sprite.tiledDesc')}</div>
                 </div>`;
 
-            componentsHtml += createComponentHtml('SpriteComponent', 'Sprite Renderer', '🖼️', '#e67e22', spriteHtml, true);
+            componentsHtml += createComponentHtml('SpriteComponent', i18n.t('component.sprite'), '🖼️', '#e67e22', spriteHtml, true);
         }
 
         // 2.4 CollisionComponent
@@ -2536,21 +2545,21 @@ class EditorPrincipal {
             const colHtml = `
                <div style="display:flex; gap:5px; margin-bottom:5px;">
                    <div style="flex:1;">
-                       <label style="font-size:10px; color:#aaa;">Box X</label>
+                       <label style="font-size:10px; color:#aaa;">${i18n.t('collision.boxX')}</label>
                        <input type="number" value="${colComp.offsetX}" class="plugin-prop" data-plugin="CollisionComponent" data-prop="offsetX" style="width:100%; background:#111; color:white; border:1px solid #444;">
                    </div>
                    <div style="flex:1;">
-                       <label style="font-size:10px; color:#aaa;">Box Y</label>
+                       <label style="font-size:10px; color:#aaa;">${i18n.t('collision.boxY')}</label>
                        <input type="number" value="${colComp.offsetY}" class="plugin-prop" data-plugin="CollisionComponent" data-prop="offsetY" style="width:100%; background:#111; color:white; border:1px solid #444;">
                    </div>
                </div>
                <div style="display:flex; gap:5px; margin-bottom:5px;">
                    <div style="flex:1;">
-                       <label style="font-size:10px; color:#aaa;">Width</label>
+                       <label style="font-size:10px; color:#aaa;">${i18n.t('collision.width')}</label>
                        <input type="number" value="${colComp.largura}" class="plugin-prop" data-plugin="CollisionComponent" data-prop="largura" style="width:100%; background:#111; color:white; border:1px solid #444;">
                    </div>
                    <div style="flex:1;">
-                       <label style="font-size:10px; color:#aaa;">Height</label>
+                       <label style="font-size:10px; color:#aaa;">${i18n.t('collision.height')}</label>
                        <input type="number" value="${colComp.altura}" class="plugin-prop" data-plugin="CollisionComponent" data-prop="altura" style="width:100%; background:#111; color:white; border:1px solid #444;">
                    </div>
                </div>
@@ -2559,10 +2568,10 @@ class EditorPrincipal {
                <div style="margin-bottom:5px; background:#1e1e2e; padding:4px; border-radius:4px; border:1px solid #444;">
                    <div style="display:flex; align-items:center; margin-bottom:4px;">
                         <input type="checkbox" ${colComp.mirrorX ? 'checked' : ''} class="plugin-prop-check" data-plugin="CollisionComponent" data-prop="mirrorX" id="chk-col-mirror">
-                        <label for="chk-col-mirror" style="font-size:10px; color:#ccc; margin-left:5px; cursor:pointer; font-weight:bold;">Enable Mirror Offset</label>
+                        <label for="chk-col-mirror" style="font-size:10px; color:#ccc; margin-left:5px; cursor:pointer; font-weight:bold;">${i18n.t('collision.mirror')}</label>
                    </div>
                    <div style="display:path; gap:5px; align-items:center;">
-                        <label style="font-size:10px; color:#aaa; min-width:60px;">Flipped X:</label>
+                        <label style="font-size:10px; color:#aaa; min-width:60px;">${i18n.t('collision.flippedX')}:</label>
                         <input type="number" value="${colComp.offsetXMirrored !== undefined ? colComp.offsetXMirrored : 0}" class="plugin-prop" data-plugin="CollisionComponent" data-prop="offsetXMirrored" style="flex:1; background:#111; color:#ccc; border:1px solid #444; font-size:10px; padding:2px;">
                    </div>
                </div>
@@ -2570,12 +2579,12 @@ class EditorPrincipal {
                 <div style="display:flex; align-items:center; justify-content: space-between; margin-top: 5px; padding-top: 5px; border-top: 1px solid #333;">
                     <div style="display:flex; align-items:center;">
                         <input type="checkbox" ${colComp.isTrigger ? 'checked' : ''} class="plugin-prop-check" data-plugin="CollisionComponent" data-prop="isTrigger" id="chk-is-trigger">
-                        <label for="chk-is-trigger" style="font-size:11px; color:#ccc; margin-left:5px; cursor:pointer;">Is Trigger (Ghost)</label>
+                        <label for="chk-is-trigger" style="font-size:11px; color:#ccc; margin-left:5px; cursor:pointer;">${i18n.t('collision.trigger')}</label>
                     </div>
-                    <button class="btn-autofit-collider" data-comp="CollisionComponent" style="background:#2ecc71; color:#fff; border:none; border-radius:4px; font-size:10px; padding:4px 8px; cursor:pointer;" title="Ajustar ao Sprite">Auto-Fit</button>
+                    <button class="btn-autofit-collider" data-comp="CollisionComponent" style="background:#2ecc71; color:#fff; border:none; border-radius:4px; font-size:10px; padding:4px 8px; cursor:pointer;" title="${i18n.t('collision.autofit')}">${i18n.t('collision.autofit')}</button>
                 </div>
             `;
-            componentsHtml += createComponentHtml('CollisionComponent', 'Box Collider 2D', '📦', '#2ecc71', colHtml, true);
+            componentsHtml += createComponentHtml('CollisionComponent', i18n.t('collision.title'), '📦', '#2ecc71', colHtml, true);
         }
 
 
@@ -2602,7 +2611,7 @@ class EditorPrincipal {
             }
 
             // Gerar opções de assets
-            let optionsAssets = '<option value="">-- Selecione Tileset --</option>';
+            let optionsAssets = `<option value="">${i18n.t('tilemap.select')}</option>`;
             // FIX: Usar this.assetManager
             if (this.assetManager && this.assetManager.assets.sprites) {
                 this.assetManager.assets.sprites.forEach(asset => {
@@ -2616,21 +2625,21 @@ class EditorPrincipal {
             const tileHtml = `
                 <div style="display:flex; flex-direction:column; gap:5px;">
                     <div style="margin-bottom:5px;">
-                        <label style="font-size:11px; color:#aaa;">Tileset Asset</label>
+                        <label style="font-size:11px; color:#aaa;">${i18n.t('tilemap.asset')}</label>
                         <select class="tileset-select" data-comp-id="${tileComp.id || 'TilemapComponent'}" style="width:100%; background:#111; color:white; border:1px solid #444; padding:4px;">
                             ${optionsAssets}
                         </select>
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                         <label style="font-size:11px; color:#aaa;">Grid Size</label>
+                         <label style="font-size:11px; color:#aaa;">${i18n.t('tilemap.grid')}</label>
                          <input type="number" value="${tileComp.tileSize}" class="plugin-prop" data-plugin="TilemapComponent" data-prop="tileSize" style="width:60px; background:#111; color:white; border:1px solid #444; padding:2px;">
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                         <label style="font-size:11px; color:#aaa;">Scale</label>
+                         <label style="font-size:11px; color:#aaa;">${i18n.t('tilemap.scale')}</label>
                          <input type="number" value="${tileComp.scale !== undefined ? tileComp.scale : 1.0}" step="0.1" class="plugin-prop" data-plugin="TilemapComponent" data-prop="scale" style="width:60px; background:#111; color:white; border:1px solid #444; padding:2px;">
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                         <label style="font-size:11px; color:#aaa;">Active</label>
+                         <label style="font-size:11px; color:#aaa;">${i18n.t('tilemap.active')}</label>
                          <input type="checkbox" ${tileComp.ativo ? 'checked' : ''} class="plugin-prop-check" data-plugin="TilemapComponent" data-prop="ativo">
                     </div>
                     
@@ -2642,16 +2651,16 @@ class EditorPrincipal {
                     
                     <div style="margin-top:5px; display:flex; flex-wrap:wrap; gap: 10px;">
                         <label style="font-size:11px; color:#ddd; display:flex; align-items:center; cursor:pointer;">
-                            <input type="checkbox" id="chk-tile-solid" style="margin-right:4px;"> Sólido
+                            <input type="checkbox" id="chk-tile-solid" style="margin-right:4px;"> ${i18n.t('tilemap.solid')}
                         </label>
                          <label style="font-size:11px; color:#ddd; display:flex; align-items:center; cursor:pointer;" title="Permite pular de baixo para cima">
-                            <input type="checkbox" id="chk-tile-plataforma" style="margin-right:4px;"> Plataforma
+                            <input type="checkbox" id="chk-tile-plataforma" style="margin-right:4px;"> ${i18n.t('tilemap.platform')}
                         </label>
                         <label style="font-size:11px; color:#ff7675; display:flex; align-items:center; cursor:pointer;" title="Permite Wall Slide/Wall Jump">
-                            <input type="checkbox" id="chk-tile-isWall" style="margin-right:4px;"> 🧗 Parede (Slide)
+                            <input type="checkbox" id="chk-tile-isWall" style="margin-right:4px;"> 🧗 ${i18n.t('tilemap.wall')}
                         </label>
                         <label style="font-size:11px; color:#55efc4; display:flex; align-items:center; cursor:pointer;" title="Chão Seguro (Sem Slide)">
-                            <input type="checkbox" id="chk-tile-isGround" style="margin-right:4px;"> 🦶 Chão
+                            <input type="checkbox" id="chk-tile-isGround" style="margin-right:4px;"> 🦶 ${i18n.t('tilemap.ground')}
                         </label>
                     </div>
 
@@ -2660,16 +2669,16 @@ class EditorPrincipal {
                         ${tilesetImage ?
                     `<img src="${tilesetImage}" id="tile-palette-img" style="image-rendering:pixelated; width:100%; cursor:crosshair;">
                              <div id="tile-selection-rect" style="position:absolute; border:2px solid yellow; pointer-events:none; display:none;"></div>`
-                    : '<div style="padding:10px; color:#666; font-size:10px;">Select a SpriteComponent first to serve as Tileset Source</div>'}
+                    : `<div style="padding:10px; color:#666; font-size:10px;">${i18n.t('tilemap.hintSource')}</div>`}
                     </div>
-                    <div style="font-size:9px; color:#666;">Selecione um tile na imagem para pintar.</div>
+                    <div style="font-size:9px; color:#666;">${i18n.t('tilemap.hintPaint')}</div>
 
                     <div style="margin-top:5px;">
-                        <button class="btn-clear-tilemap" style="width:100%; background:#721c24; color:#f8d7da; border:1px solid #f5c6cb; padding:5px; cursor:pointer;">🗑️ Clear Map</button>
+                        <button class="btn-clear-tilemap" style="width:100%; background:#721c24; color:#f8d7da; border:1px solid #f5c6cb; padding:5px; cursor:pointer;">🗑️ ${i18n.t('tilemap.clear')}</button>
                     </div>
                 </div>
             `;
-            componentsHtml += createComponentHtml('TilemapComponent', 'Tilemap System', '🧱', '#795548', tileHtml, true);
+            componentsHtml += createComponentHtml('TilemapComponent', i18n.t('tilemap.title'), '🧱', '#e74c3c', tileHtml, true);
         }
 
         // 2.8 ParallaxComponent
@@ -2679,7 +2688,7 @@ class EditorPrincipal {
 
             // List existing layers
             parallaxComp.layers.forEach((layer, index) => {
-                let optionsAssets = '<option value="">(None)</option>';
+                let optionsAssets = `<option value="">${i18n.t('parallax.none')}</option>`;
                 if (this.assetManager && this.assetManager.assets.sprites) {
                     this.assetManager.assets.sprites.forEach(asset => {
                         const selected = (asset.id === layer.assetId) ? 'selected' : '';
@@ -2690,64 +2699,64 @@ class EditorPrincipal {
                 parallaxHtml += `
                     <div style="background:#222; padding:5px; border-radius:4px; border:1px solid #444;">
                         <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                            <label style="font-size:11px; font-weight:bold; color:#ccc;">Layer ${index + 1}</label>
+                            <label style="font-size:11px; font-weight:bold; color:#ccc;">${i18n.t('parallax.layer')} ${index + 1}</label>
                             <button class="btn-remove-parallax-layer" data-index="${index}" style="background:#c0392b; color:white; border:none; border-radius:3px; font-size:9px; padding:2px 5px; cursor:pointer;">X</button>
                         </div>
                         <div style="margin-bottom:5px;">
-                             <label style="font-size:10px; color:#aaa;">Image Asset</label>
+                             <label style="font-size:10px; color:#aaa;">${i18n.t('parallax.asset')}</label>
                              <select class="parallax-layer-prop" data-index="${index}" data-prop="assetId" style="width:100%; background:#111; color:white; border:1px solid #444; font-size:10px;">
                                 ${optionsAssets}
                              </select>
                         </div>
                         <div style="display:flex; gap:5px;">
                             <div style="flex:1;">
-                                <label style="font-size:10px; color:#aaa;">Speed X</label>
+                                <label style="font-size:10px; color:#aaa;">${i18n.t('parallax.speedX')}</label>
                                 <input type="number" step="0.1" value="${layer.speedX}" class="parallax-layer-prop" data-index="${index}" data-prop="speedX" style="width:100%; background:#111; color:white; border:1px solid #444;">
                             </div>
                             <div style="flex:1;">
-                                <label style="font-size:10px; color:#aaa;">Speed Y</label>
+                                <label style="font-size:10px; color:#aaa;">${i18n.t('parallax.speedY')}</label>
                                 <input type="number" step="0.1" value="${layer.speedY}" class="parallax-layer-prop" data-index="${index}" data-prop="speedY" style="width:100%; background:#111; color:white; border:1px solid #444;">
                             </div>
                         </div>
                          <div style="display:flex; gap:5px; margin-top:5px;">
                             <div style="flex:1;">
-                                <label style="font-size:10px; color:#aaa;">Opacity</label>
+                                <label style="font-size:10px; color:#aaa;">${i18n.t('parallax.opacity')}</label>
                                 <input type="number" step="0.1" min="0" max="1" value="${layer.opacity}" class="parallax-layer-prop" data-index="${index}" data-prop="opacity" style="width:100%; background:#111; color:white; border:1px solid #444;">
                             </div>
                             <div style="flex:1;">
-                                <label style="font-size:10px; color:#aaa;">Scale</label>
+                                <label style="font-size:10px; color:#aaa;">${i18n.t('parallax.scale')}</label>
                                 <input type="number" step="0.1" value="${layer.scale}" class="parallax-layer-prop" data-index="${index}" data-prop="scale" style="width:100%; background:#111; color:white; border:1px solid #444;">
                             </div>
                              <div style="flex:1;">
-                                <label style="font-size:10px; color:#aaa;">Pos Y</label>
+                                <label style="font-size:10px; color:#aaa;">${i18n.t('parallax.posY')}</label>
                                 <input type="number" step="1" value="${layer.yOffset || 0}" class="parallax-layer-prop" data-index="${index}" data-prop="yOffset" style="width:100%; background:#111; color:white; border:1px solid #444;">
                             </div>
                         </div>
                         <!-- New Layout: Groups -->
                          <div style="margin-top:8px; padding-top:5px; border-top:1px dashed #333;">
                             <div style="margin-bottom:5px;">
-                                <div style="font-size:9px; color:#888; margin-bottom:2px;">Repetição</div>
+                                <div style="font-size:9px; color:#888; margin-bottom:2px;">${i18n.t('parallax.repeat')}</div>
                                 <div style="display:flex; gap:10px;">
                                     <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;">
-                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="repeatX" ${(layer.repeatX !== false) ? 'checked' : ''}> Horizontal (X)
+                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="repeatX" ${(layer.repeatX !== false) ? 'checked' : ''}> ${i18n.t('parallax.repeatX')}
                                     </label>
                                     <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;">
-                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="repeatY" ${(layer.repeatY) ? 'checked' : ''}> Vertical (Y)
+                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="repeatY" ${(layer.repeatY) ? 'checked' : ''}> ${i18n.t('parallax.repeatY')}
                                     </label>
                                 </div>
                             </div>
 
                             <div style="margin-bottom:5px;">
-                                <div style="font-size:9px; color:#888; margin-bottom:2px;">Ajuste de Tela</div>
+                                <div style="font-size:9px; color:#888; margin-bottom:2px;">${i18n.t('parallax.fit')}</div>
                                  <div style="display:flex; flex-wrap:wrap; gap:8px;">
                                     <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;" title="Ajusta altura ao jogo">
-                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="fitHeight" ${(layer.fitHeight) ? 'checked' : ''}> Altura
+                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="fitHeight" ${(layer.fitHeight) ? 'checked' : ''}> ${i18n.t('parallax.fitHeight')}
                                     </label>
                                      <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;" title="Cobre a tela inteira">
-                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="fitScreen" ${(layer.fitScreen) ? 'checked' : ''}> Tela Cheia
+                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="fitScreen" ${(layer.fitScreen) ? 'checked' : ''}> ${i18n.t('parallax.fitFullscreen')}
                                     </label>
                                      <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;" title="Modo Cover (CSS Style)">
-                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="fitCover" ${(layer.fitCover) ? 'checked' : ''}> Cover
+                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="fitCover" ${(layer.fitCover) ? 'checked' : ''}> ${i18n.t('parallax.fitCover')}
                                     </label>
                                 </div>
                             </div>
@@ -2759,13 +2768,13 @@ class EditorPrincipal {
             // Add Button
             parallaxHtml += `
                 <div style="text-align:center;">
-                    <button class="btn-add-parallax-layer" style="width:100%; background:#3498db; color:white; border:none; padding:5px; border-radius:4px; font-size:11px; cursor:pointer;">+ New Layer</button>
+                    <button class="btn-add-parallax-layer" style="width:100%; background:#3498db; color:white; border:none; padding:5px; border-radius:4px; font-size:11px; cursor:pointer;">${i18n.t('parallax.addLayer')}</button>
                 </div>
             `;
 
             parallaxHtml += '</div>';
 
-            componentsHtml += createComponentHtml('ParallaxComponent', 'Parallax Background', '🌄', '#8e44ad', parallaxHtml, true);
+            componentsHtml += createComponentHtml('ParallaxComponent', i18n.t('parallax.title'), '🌄', '#8e44ad', parallaxHtml, true);
         }
 
         // 2.9 DialogueComponent
@@ -2776,15 +2785,15 @@ class EditorPrincipal {
             // Controle de Teste
             dialogueHtml += `
                  <div style="display:flex; gap:5px; margin-bottom:5px;">
-                     <button class="btn-test-dialogue" style="flex:1; background:#27ae60; color:white; border:none; padding:5px; border-radius:4px; font-size:11px; cursor:pointer;">▶ Test Dialogue</button>
-                     <button class="btn-stop-dialogue" style="flex:1; background:#c0392b; color:white; border:none; padding:5px; border-radius:4px; font-size:11px; cursor:pointer;">◼ Stop</button>
+                     <button class="btn-test-dialogue" style="flex:1; background:#27ae60; color:white; border:none; padding:5px; border-radius:4px; font-size:11px; cursor:pointer;">${i18n.t('dialogue.test')}</button>
+                     <button class="btn-stop-dialogue" style="flex:1; background:#c0392b; color:white; border:none; padding:5px; border-radius:4px; font-size:11px; cursor:pointer;">${i18n.t('dialogue.stop')}</button>
                  </div>
             `;
 
             // Lista de Diálogos
             dialogueComp.dialogos.forEach((diag, index) => {
                 // Gerar opções de sprites para Portrait
-                let portraitOptions = '<option value="">(Nenhum)</option>';
+                let portraitOptions = `<option value="">${i18n.t('dialogue.none')}</option>`;
                 if (this.assetManager && this.assetManager.assets.sprites) {
                     this.assetManager.assets.sprites.forEach(asset => {
                         const selected = (asset.id === diag.portrait) ? 'selected' : '';
@@ -2799,16 +2808,16 @@ class EditorPrincipal {
                             <button class="btn-remove-dialogue" data-index="${index}" style="background:transparent; color:#e74c3c; border:none; font-size:12px; cursor:pointer;">🗑️</button>
                         </div>
                         <div style="margin-bottom:4px;">
-                             <input type="text" class="dialogue-prop" data-index="${index}" data-prop="speaker" value="${diag.speaker}" placeholder="Speaker Name" style="width:100%; background:#111; color:#4ecdc4; border:1px solid #333; font-size:11px; font-weight:bold; padding:2px;">
+                             <input type="text" class="dialogue-prop" data-index="${index}" data-prop="speaker" value="${diag.speaker}" placeholder="${i18n.t('dialogue.speakerPlaceholder')}" style="width:100%; background:#111; color:#4ecdc4; border:1px solid #333; font-size:11px; font-weight:bold; padding:2px;">
                         </div>
                         <div style="margin-bottom:4px;">
-                            <label style="font-size:9px; color:#888;">🖼️ Portrait (Imagem)</label>
+                            <label style="font-size:9px; color:#888;">🖼️ ${i18n.t('dialogue.portrait')}</label>
                             <select class="dialogue-prop" data-index="${index}" data-prop="portrait" style="width:100%; background:#111; color:#ccc; border:1px solid #333; font-size:10px; padding:2px;">
                                 ${portraitOptions}
                             </select>
                         </div>
                         <div>
-                             <textarea class="dialogue-prop" data-index="${index}" data-prop="text" placeholder="Message text..." style="width:100%; height:40px; background:#111; color:#ccc; border:1px solid #333; font-size:11px; padding:2px; resize:vertical;">${diag.text}</textarea>
+                             <textarea class="dialogue-prop" data-index="${index}" data-prop="text" placeholder="${i18n.t('dialogue.messagePlaceholder')}" style="width:100%; height:40px; background:#111; color:#ccc; border:1px solid #333; font-size:11px; padding:2px; resize:vertical;">${diag.text}</textarea>
                         </div>
                     </div>
                 `;
@@ -2817,12 +2826,12 @@ class EditorPrincipal {
             // Add Button
             dialogueHtml += `
                 <div style="text-align:center;">
-                    <button class="btn-add-dialogue" style="width:100%; background:#8e44ad; color:white; border:none; padding:5px; border-radius:4px; font-size:11px; cursor:pointer;">+ Add Message</button>
+                    <button class="btn-add-dialogue" style="width:100%; background:#8e44ad; color:white; border:none; padding:5px; border-radius:4px; font-size:11px; cursor:pointer;">${i18n.t('dialogue.addMessage')}</button>
                 </div>
             `;
 
             dialogueHtml += '</div>';
-            componentsHtml += createComponentHtml('DialogueComponent', 'Dialogue System (NPC)', '💬', '#34495e', dialogueHtml, true);
+            componentsHtml += createComponentHtml('DialogueComponent', i18n.t('dialogue.title'), '💬', '#34495e', dialogueHtml, true);
         }
 
         // 2.10 KillZoneComponent
@@ -2830,27 +2839,27 @@ class EditorPrincipal {
         if (killRef) {
             let killHtml = `
             <div style="background:#222; padding:5px; border-radius:4px; margin-bottom:5px;">
-                <p style="font-size:10px; color:#aaa; margin:0 0 5px 0;">Modo de Morte</p>
+                <p style="font-size:10px; color:#aaa; margin:0 0 5px 0;">${i18n.t('killzone.deathMode')}</p>
                 <div style="margin-bottom:5px;">
                      <label style="font-size:11px; color:#ccc; display:flex; align-items:center;">
-                        <input type="checkbox" id="prop-kz-global" ${(killRef.globalLine) ? 'checked' : ''}> Linha Global (Y > Posição)
+                        <input type="checkbox" id="prop-kz-global" ${(killRef.globalLine) ? 'checked' : ''}> ${i18n.t('killzone.globalLine')}
                     </label>
-                    <p style="font-size:9px; color:#666; margin-left:18px;">Se marcado, mata o player se cair abaixo desta linha Y. Se desmarcado, usa o Colisor como Trigger.</p>
+                    <p style="font-size:9px; color:#666; margin-left:18px;">${i18n.t('killzone.globalLineHint')}</p>
                 </div>
                 <div style="margin-bottom:5px;">
                      <label style="font-size:11px; color:#ccc; display:flex; align-items:center;">
-                        <input type="checkbox" id="prop-kz-destroy" ${(killRef.destroyPlayer) ? 'checked' : ''}> Destruir Player
+                        <input type="checkbox" id="prop-kz-destroy" ${(killRef.destroyPlayer) ? 'checked' : ''}> ${i18n.t('killzone.destroyPlayer')}
                     </label>
                 </div>
                  <div>
-                    <label style="font-size:10px; color:#aaa;">Ponto Respawn (X, Y)</label>
+                    <label style="font-size:10px; color:#aaa;">${i18n.t('killzone.respawnPoint')}</label>
                     <div style="display:flex; gap:5px;">
-                         <input type="number" id="prop-kz-x" value="${killRef.resetPosition.x}" style="flex:1; background:#111; color:white; border:1px solid #444;">
-                         <input type="number" id="prop-kz-y" value="${killRef.resetPosition.y}" style="flex:1; background:#111; color:white; border:1px solid #444;">
+                         <input type="number" id="prop-kz-x" value="${killRef.resetPosition.x}" style="flex:1; background:#111; color:white; border:1px solid #444; padding:5px; border-radius:4px;width: 100px;">
+                         <input type="number" id="prop-kz-y" value="${killRef.resetPosition.y}" style="flex:1; background:#111; color:white; border:1px solid #444; padding:5px; border-radius:4px;width: 100px;">
                     </div>
                 </div>
             </div>`;
-            componentsHtml += createComponentHtml('KillZoneComponent', 'Kill Zone', '☠️', '#c0392b', killHtml, true);
+            componentsHtml += createComponentHtml('KillZoneComponent', i18n.t('killzone.title'), '☠️', '#c0392b', killHtml, true);
         }
 
         // 2.11 CheckpointComponent
@@ -2859,11 +2868,11 @@ class EditorPrincipal {
             let checkHtml = `
             <div style="background:#222; padding:5px; border-radius:4px; margin-bottom:5px;">
                 <label style="font-size:11px; color:#ccc; display:flex; align-items:center;">
-                    <input type="checkbox" id="prop-check-ativo" ${(checkRef.ativo) ? 'checked' : ''}> Ativo
+                    <input type="checkbox" id="prop-check-ativo" ${(checkRef.ativo) ? 'checked' : ''}> ${i18n.t('checkpoint.active')}
                 </label>
-                <p style="font-size:9px; color:#aaa; margin:5px 0;">Checkpoint salva a posição deste objeto quando o Player toca nele.</p>
+                <p style="font-size:9px; color:#aaa; margin:5px 0;">${i18n.t('checkpoint.description')}</p>
             </div>`;
-            componentsHtml += createComponentHtml('CheckpointComponent', 'Checkpoint System', '🚩', '#f1c40f', checkHtml, true);
+            componentsHtml += createComponentHtml('CheckpointComponent', i18n.t('checkpoint.title'), '🚩', '#f1c40f', checkHtml, true);
         }
 
         // 2.12 ParticleEmitterComponent
@@ -2871,7 +2880,7 @@ class EditorPrincipal {
         if (particleRef) {
             // Gerar opções de templates
             const templates = this.particleTemplateManager.obterTodos();
-            let templateOptions = '<option value="">- Manual (sem template) -</option>';
+            let templateOptions = `<option value="">${i18n.t('particle.manual')}</option>`;
             templates.forEach(template => {
                 const selected = (particleRef.templateId === template.id) ? 'selected' : '';
                 const icon = template.customizado ? '⭐' : '📦';
@@ -2883,153 +2892,153 @@ class EditorPrincipal {
                 <!-- Templates Globais -->
                 <div style="margin-bottom:15px; padding:8px; background:#2a1a40; border:1px solid #6a4c9c; border-radius:4px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                        <label style="font-size:10px; color:#c9a0ff; font-weight:bold;">🎯 Template</label>
-                        <button id="btn-manage-templates" style="background:#6a4c9c; color:white; border:none; padding:2px 8px; border-radius:3px; font-size:9px; cursor:pointer;">Gerenciar</button>
+                        <label style="font-size:10px; color:#c9a0ff; font-weight:bold;">🎯 ${i18n.t('particle.template')}</label>
+                        <button id="btn-manage-templates" style="background:#6a4c9c; color:white; border:none; padding:2px 8px; border-radius:3px; font-size:9px; cursor:pointer;">${i18n.t('particle.manage')}</button>
                     </div>
                     <select id="particle-template" style="width:100%; background:#1a1a2e; color:#c9a0ff; border:1px solid #6a4c9c; padding:5px; font-size:11px; margin-bottom:5px;">
                         ${templateOptions}
                     </select>
-                    <div style="font-size:8px; color:#888; margin-top:3px;">💡 Templates são reusáveis em múltiplas entidades</div>
+                    <div style="font-size:8px; color:#888; margin-top:3px;">💡 ${i18n.t('particle.templateHint')}</div>
                 </div>
 
-                <!-- Presets --\u003e
+                <!-- Presets -->
                 <div style="margin-bottom:15px; padding:8px; background:#1a1a2e; border-radius:4px;">
-                    <label style="font-size:10px; color:#aaa; margin-bottom:3px; display:block;">🎨 Presets Rápidos</label>
+                    <label style="font-size:10px; color:#aaa; margin-bottom:3px; display:block;">🎨 ${i18n.t('particle.presets')}</label>
                     <select id="particle-preset" style="width:100%; background:#111; color:#4ecdc4; border:1px solid #444; padding:5px; font-size:11px; margin-bottom:5px;">
-                        <option value="">- Selecione -</option>
-                        <option value="fogo">🔥 Fogo</option>
-                        <option value="explosao">💥 Explosão</option>
-                        <option value="fumaca">💨 Fumaça</option>
-                        <option value="sparkles">✨ Sparkles</option>
-                        <option value="chuva">🌧️ Chuva</option>
-                        <option value="aura">💫 Aura</option>
+                        <option value="">${i18n.t('particle.select')}</option>
+                        <option value="fogo">${i18n.t('particle.presetFire')}</option>
+                        <option value="explosao">${i18n.t('particle.presetExplosion')}</option>
+                        <option value="fumaca">${i18n.t('particle.presetSmoke')}</option>
+                        <option value="sparkles">${i18n.t('particle.presetSparkles')}</option>
+                        <option value="chuva">${i18n.t('particle.presetRain')}</option>
+                        <option value="aura">${i18n.t('particle.presetAura')}</option>
                     </select>
-                    <button id="btn-apply-preset" style="width:100%; background:#27ae60; color:white; border:none; padding:5px; border-radius:4px; cursor:pointer; font-size:11px;">Aplicar Preset</button>
+                    <button id="btn-apply-preset" style="width:100%; background:#27ae60; color:white; border:none; padding:5px; border-radius:4px; cursor:pointer; font-size:11px;">${i18n.t('particle.applyPreset')}</button>
                 </div>
 
                 <!-- Controles de Emissão -->
                 <div style="margin-bottom:15px; padding:8px; background:#1a1a2e; border-radius:4px;">
-                    <div style="font-size:11px; color:#4ecdc4; margin-bottom:8px; font-weight:bold;">⚙️ Emissão</div>
+                    <div style="font-size:11px; color:#4ecdc4; margin-bottom:8px; font-weight:bold;">⚙️ ${i18n.t('particle.emission')}</div>
                     
                     <div style="margin-bottom:8px;">
                         <label style="font-size:11px; color:#ccc; display:flex; align-items:center; gap:5px;">
-                            <input type="checkbox" id="particle-emitindo" ${particleRef.emitindo ? 'checked' : ''}> Emitindo
+                            <input type="checkbox" id="particle-emitindo" ${particleRef.emitindo ? 'checked' : ''}> ${i18n.t('particle.emitting')}
                         </label>
                     </div>
 
                     <div style="margin-bottom:8px;">
-                        <label style="font-size:10px; color:#aaa;">Taxa (part/s): <span id="particletaxa-val">${particleRef.taxaEmissao}</span></label>
+                        <label style="font-size:10px; color:#aaa;">${i18n.t('particle.rate')}: <span id="particletaxa-val">${particleRef.taxaEmissao}</span></label>
                         <input type="range" id="particle-taxa" min="1" max="100" value="${particleRef.taxaEmissao}" style="width:100%;">
                     </div>
 
                     <div style="margin-bottom:8px;">
-                        <label style="font-size:10px; color:#aaa;">Máx Partículas: <span id="particle-max-val">${particleRef.maxParticulas}</span></label>
+                        <label style="font-size:10px; color:#aaa;">${i18n.t('particle.maxParticles')}: <span id="particle-max-val">${particleRef.maxParticulas}</span></label>
                         <input type="range" id="particle-max" min="10" max="500" value="${particleRef.maxParticulas}" style="width:100%;">
                     </div>
 
                     <div style="margin-bottom:8px;">
-                        <label style="font-size:10px; color:#aaa;">Modo</label>
+                        <label style="font-size:10px; color:#aaa;">${i18n.t('particle.mode')}</label>
                         <select id="particle-modo" style="width:100%; background:#111; color:white; border:1px solid #444; padding:3px; font-size:10px;">
-                            <option value="continuo" ${particleRef.modo === 'continuo' ? 'selected' : ''}>Contínuo</option>
-                            <option value="burst" ${particleRef.modo === 'burst' ? 'selected' : ''}>Burst</option>
-                            <option value="oneshot" ${particleRef.modo === 'oneshot' ? 'selected' : ''}>One-Shot</option>
+                            <option value="continuo" ${particleRef.modo === 'continuo' ? 'selected' : ''}>${i18n.t('particle.modeContinuous')}</option>
+                            <option value="burst" ${particleRef.modo === 'burst' ? 'selected' : ''}>${i18n.t('particle.modeBurst')}</option>
+                            <option value="oneshot" ${particleRef.modo === 'oneshot' ? 'selected' : ''}>${i18n.t('particle.modeOneShot')}</option>
                         </select>
                     </div>
                 </div>
 
                 <!-- Controles Visuais -->
                 <div style="margin-bottom:15px; padding:8px; background:#1a1a2e; border-radius:4px;">
-                    <div style="font-size:11px; color:#4ecdc4; margin-bottom:8px; font-weight:bold;">🎨 Visual</div>
+                    <div style="font-size:11px; color:#4ecdc4; margin-bottom:8px; font-weight:bold;">🎨 ${i18n.t('particle.visual')}</div>
                     
                     <div style="display:flex; gap:8px; margin-bottom:8px;">
                         <div style="flex:1;">
-                            <label style="font-size:9px; color:#aaa;">Cor Inicial</label>
+                            <label style="font-size:9px; color:#aaa;">${i18n.t('particle.startColor')}</label>
                             <input type="color" id="particle-cor-ini" value="${particleRef.corInicial}" style="width:100%; height:24px;">
                         </div>
                         <div style="flex:1;">
-                            <label style="font-size:9px; color:#aaa;">Cor Final</label>
+                            <label style="font-size:9px; color:#aaa;">${i18n.t('particle.endColor')}</label>
                             <input type="color" id="particle-cor-fim" value="${particleRef.corFinal}" style="width:100%; height:24px;">
                         </div>
                     </div>
 
                     <div style="margin-bottom:8px;">
-                        <label style="font-size:10px; color:#aaa;">Tamanho Inicial: <span id="particle-size-ini-val">${particleRef.tamanhoInicial}</span>px</label>
+                        <label style="font-size:10px; color:#aaa;">${i18n.t('particle.startSize')}: <span id="particle-size-ini-val">${particleRef.tamanhoInicial}</span>px</label>
                         <input type="range" id="particle-size-ini" min="1" max="30" value="${particleRef.tamanhoInicial}" style="width:100%;">
                     </div>
 
                     <div style="margin-bottom:8px;">
-                        <label style="font-size:10px; color:#aaa;">Tamanho Final: <span id="particle-size-fim-val">${particleRef.tamanhoFinal}</span>px</label>
+                        <label style="font-size:10px; color:#aaa;">${i18n.t('particle.endSize')}: <span id="particle-size-fim-val">${particleRef.tamanhoFinal}</span>px</label>
                         <input type="range" id="particle-size-fim" min="0" max="30" value="${particleRef.tamanhoFinal}" style="width:100%;">
                     </div>
 
                     <div style="margin-bottom:8px;">
-                        <label style="font-size:10px; color:#aaa;">Opacidade Inicial: <span id="particle-opa-ini-val">${particleRef.opacidadeInicial}</span></label>
+                        <label style="font-size:10px; color:#aaa;">${i18n.t('particle.startOpacity')}: <span id="particle-opa-ini-val">${particleRef.opacidadeInicial}</span></label>
                         <input type="range" id="particle-opa-ini" min="0" max="1" step="0.1" value="${particleRef.opacidadeInicial}" style="width:100%;">
                     </div>
 
                     <div style="margin-bottom:8px;">
-                        <label style="font-size:10px; color:#aaa;">Opacidade Final: <span id="particle-opa-fim-val">${particleRef.opacidadeFinal}</span></label>
+                        <label style="font-size:10px; color:#aaa;">${i18n.t('particle.endOpacity')}: <span id="particle-opa-fim-val">${particleRef.opacidadeFinal}</span></label>
                         <input type="range" id="particle-opa-fim" min="0" max="1" step="0.1" value="${particleRef.opacidadeFinal}" style="width:100%;">
                     </div>
                 </div>
 
                 <!-- Controles de Física -->
                 <div style="margin-bottom:15px; padding:8px; background:#1a1a2e; border-radius:4px;">
-                    <div style="font-size:11px; color:#4ecdc4; margin-bottom:8px; font-weight:bold;">⚡ Física</div>
+                    <div style="font-size:11px; color:#4ecdc4; margin-bottom:8px; font-weight:bold;">⚡ ${i18n.t('particle.physics')}</div>
                     
                     <div style="margin-bottom:8px;">
-                        <label style="font-size:10px; color:#aaa;">Velocidade Min: <span id="particle-vel-min-val">${particleRef.velocidadeMin}</span></label>
+                        <label style="font-size:10px; color:#aaa;">${i18n.t('particle.minSpeed')}: <span id="particle-vel-min-val">${particleRef.velocidadeMin}</span></label>
                         <input type="range" id="particle-vel-min" min="0" max="500" value="${particleRef.velocidadeMin}" style="width:100%;">
                     </div>
 
                     <div style="margin-bottom:8px;">
-                        <label style="font-size:10px; color:#aaa;">Velocidade Max: <span id="particle-vel-max-val">${particleRef.velocidadeMax}</span></label>
+                        <label style="font-size:10px; color:#aaa;">${i18n.t('particle.maxSpeed')}: <span id="particle-vel-max-val">${particleRef.velocidadeMax}</span></label>
                         <input type="range" id="particle-vel-max" min="0" max="500" value="${particleRef.velocidadeMax}" style="width:100%;">
                     </div>
 
                     <div style="margin-bottom:8px;">
-                        <label style="font-size:10px; color:#aaa;">Ângulo Min (°): <span id="particle-ang-min-val">${particleRef.anguloMin}</span></label>
+                        <label style="font-size:10px; color:#aaa;">${i18n.t('particle.minAngle')}: <span id="particle-ang-min-val">${particleRef.anguloMin}</span></label>
                         <input type="range" id="particle-ang-min" min="0" max="360" value="${particleRef.anguloMin}" style="width:100%;">
                     </div>
 
                     <div style="margin-bottom:8px;">
-                        <label style="font-size:10px; color:#aaa;">Ângulo Max (°): <span id="particle-ang-max-val">${particleRef.anguloMax}</span></label>
+                        <label style="font-size:10px; color:#aaa;">${i18n.t('particle.maxAngle')}: <span id="particle-ang-max-val">${particleRef.anguloMax}</span></label>
                         <input type="range" id="particle-ang-max" min="0" max="360" value="${particleRef.anguloMax}" style="width:100%;">
                     </div>
 
                     <div style="margin-bottom:8px;">
-                        <label style="font-size:10px; color:#aaa;">Gravidade: <span id="particle-grav-val">${particleRef.gravidade}</span></label>
+                        <label style="font-size:10px; color:#aaa;">${i18n.t('particle.gravity')}: <span id="particle-grav-val">${particleRef.gravidade}</span></label>
                         <input type="range" id="particle-grav" min="-200" max="400" value="${particleRef.gravidade}" style="width:100%;">
                     </div>
 
                     <div style="margin-bottom:8px;">
-                        <label style="font-size:10px; color:#aaa;">Arrasto: <span id="particle-arrasto-val">${particleRef.arrasto}</span></label>
+                        <label style="font-size:10px; color:#aaa;">${i18n.t('particle.drag')}: <span id="particle-arrasto-val">${particleRef.arrasto}</span></label>
                         <input type="range" id="particle-arrasto" min="0.8" max="1.0" step="0.01" value="${particleRef.arrasto}" style="width:100%;">
                     </div>
                 </div>
 
                 <!-- Controles de Tempo de Vida -->
                 <div style="margin-bottom:15px; padding:8px; background:#1a1a2e; border-radius:4px;">
-                    <div style="font-size:11px; color:#4ecdc4; margin-bottom:8px; font-weight:bold;">⏱️ Tempo de Vida</div>
+                    <div style="font-size:11px; color:#4ecdc4; margin-bottom:8px; font-weight:bold;">⏱️ ${i18n.t('particle.lifetimeHeader')}</div>
                     
                     <div style="margin-bottom:8px;">
-                        <label style="font-size:10px; color:#aaa;">Vida Mín (s): <span id="particle-vida-min-val">${particleRef.tempoVidaMin}</span></label>
+                        <label style="font-size:10px; color:#aaa;">${i18n.t('particle.minLifetime')}: <span id="particle-vida-min-val">${particleRef.tempoVidaMin}</span></label>
                         <input type="range" id="particle-vida-min" min="0.1" max="5" step="0.1" value="${particleRef.tempoVidaMin}" style="width:100%;">
                     </div>
 
                     <div style="margin-bottom:8px;">
-                        <label style="font-size:10px; color:#aaa;">Vida Máx (s): <span id="particle-vida-max-val">${particleRef.tempoVidaMax}</span></label>
+                        <label style="font-size:10px; color:#aaa;">${i18n.t('particle.maxLifetime')}: <span id="particle-vida-max-val">${particleRef.tempoVidaMax}</span></label>
                         <input type="range" id="particle-vida-max" min="0.1" max="5" step="0.1" value="${particleRef.tempoVidaMax}" style="width:100%;">
                     </div>
                 </div>
 
                 <!-- Info -->
                 <div style="font-size:9px; color:#666; padding:5px; background:#111; border-radius:4px;">
-                    <div>✨ Partículas ativas: <strong id="particle-count">${particleRef.particulas.length}</strong></div>
-                    <div>📊 Taxa: ${particleRef.taxaEmissao}/s | Modo: ${particleRef.modo}</div>
+                    <div>✨ ${i18n.t('particle.activeParticles')}: <strong id="particle-count">${particleRef.particulas.length}</strong></div>
+                    <div>📊 ${i18n.t('particle.rate')}: ${particleRef.taxaEmissao}/s | ${i18n.t('particle.mode')}: ${particleRef.modo}</div>
                 </div>
             </div>`;
-            componentsHtml += createComponentHtml('ParticleEmitterComponent', 'Sistema de Partículas', '✨', '#e74c3c', particleHtml, true);
+            componentsHtml += createComponentHtml('ParticleEmitterComponent', i18n.t('particle.title'), '✨', '#e74c3c', particleHtml, true);
         }
 
         // 2.14 InventoryComponent
@@ -3038,15 +3047,15 @@ class EditorPrincipal {
             let invHtml = `
             <div style="background:#222; padding:5px; border-radius:4px; margin-bottom:5px;">
                 <div style="margin-bottom:5px;">
-                     <label style="font-size:10px; color:#aaa;">Slots Máximos</label>
+                     <label style="font-size:10px; color:#aaa;">${i18n.t('inventory.maxSlots')}</label>
                      <input type="number" value="${invComp.slots}" class="plugin-prop" data-plugin="InventoryComponent" data-prop="slots" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px;">
                 </div>
                 <div style="font-size:10px; color:#666; margin-top:5px; padding:5px; background:#1a1a1a; border-radius:3px;">
-                    <div>🎒 Itens Atuais: <strong style="color:#f39c12">${invComp.items.length}</strong></div>
+                    <div>🎒 ${i18n.t('inventory.currentItems')}: <strong style="color:#f39c12">${invComp.items.length}</strong></div>
                     ${invComp.items.map(i => `<div style="color:#aaa; font-size:9px;">- ${i.id} (x${i.qtd})</div>`).join('')}
                 </div>
             </div>`;
-            componentsHtml += createComponentHtml('InventoryComponent', 'Inventário (Player)', '🎒', '#f39c12', invHtml, true);
+            componentsHtml += createComponentHtml('InventoryComponent', i18n.t('inventory.title'), '🎒', '#f39c12', invHtml, true);
         }
 
         // 2.15 CameraFollowComponent
@@ -3055,21 +3064,21 @@ class EditorPrincipal {
             let camHtml = `
             <div style="background:#222; padding:5px; border-radius:4px; margin-bottom:5px;">
                 <div style="margin-bottom:5px;">
-                     <label style="font-size:10px; color:#aaa;">Suavidade (0-1) - Menor = Mais Lento</label>
+                     <label style="font-size:10px; color:#aaa;">${i18n.t('camera.smoothSpeed')}</label>
                      <input type="number" step="0.01" min="0.01" max="1.0" value="${camFollow.smoothSpeed}" class="plugin-prop" data-plugin="CameraFollowComponent" data-prop="smoothSpeed" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px;">
                 </div>
                 <div style="display:flex; gap:5px;">
                     <div style="flex:1;">
-                         <label style="font-size:10px; color:#aaa;">Offset X (Horizontal)</label>
+                         <label style="font-size:10px; color:#aaa;">${i18n.t('camera.offsetX')}</label>
                          <input type="number" value="${camFollow.offsetX}" class="plugin-prop" data-plugin="CameraFollowComponent" data-prop="offsetX" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px;">
                     </div>
                     <div style="flex:1;">
-                         <label style="font-size:10px; color:#aaa;">Offset Y (Vertical)</label>
+                         <label style="font-size:10px; color:#aaa;">${i18n.t('camera.offsetY')}</label>
                          <input type="number" value="${camFollow.offsetY}" class="plugin-prop" data-plugin="CameraFollowComponent" data-prop="offsetY" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px;">
                     </div>
                 </div>
-            </div>`;
-            componentsHtml += createComponentHtml('CameraFollowComponent', 'Camera Follow', '🎥', '#9b59b6', camHtml, true);
+            `;
+            componentsHtml += createComponentHtml('CameraFollowComponent', i18n.t('camera.title'), '🎥', '#9b59b6', camHtml, true);
         }
 
         // 2.15 ItemComponent
@@ -3079,34 +3088,34 @@ class EditorPrincipal {
             <div style="background:#222; padding:5px; border-radius:4px; margin-bottom:5px;">
                 <div style="display:flex; gap:5px; margin-bottom:5px;">
                     <div style="flex:2;">
-                         <label style="font-size:10px; color:#aaa;">Item ID</label>
+                         <label style="font-size:10px; color:#aaa;">${i18n.t('item.id')}</label>
                          <input type="text" value="${itemComp.itemId}" class="plugin-prop" data-plugin="ItemComponent" data-prop="itemId" style="width:100%; background:#111; color:#f1c40f; border:1px solid #444; padding:5px; font-weight:bold;">
                     </div>
                     <div style="flex:1;">
-                         <label style="font-size:10px; color:#aaa;">Qtd</label>
+                         <label style="font-size:10px; color:#aaa;">${i18n.t('item.qty')}</label>
                          <input type="number" value="${itemComp.quantidade}" class="plugin-prop" data-plugin="ItemComponent" data-prop="quantidade" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px;">
                     </div>
                 </div>
                  <div style="margin-bottom:5px;">
                      <label style="font-size:11px; color:#ccc; display:flex; align-items:center; cursor:pointer;">
-                        <input type="checkbox" class="plugin-prop-check" data-plugin="ItemComponent" data-prop="autoPickup" ${(itemComp.autoPickup) ? 'checked' : ''} style="margin-right:5px;"> Auto Coletar
+                        <input type="checkbox" class="plugin-prop-check" data-plugin="ItemComponent" data-prop="autoPickup" ${(itemComp.autoPickup) ? 'checked' : ''} style="margin-right:5px;"> ${i18n.t('item.autoPickup')}
                     </label>
                 </div>
                 <div style="margin-bottom:5px;">
                      <label style="font-size:11px; color:#ccc; display:flex; align-items:center; cursor:pointer;">
-                        <input type="checkbox" class="plugin-prop-check" data-plugin="ItemComponent" data-prop="destroyOnPickup" ${(itemComp.destroyOnPickup) ? 'checked' : ''} style="margin-right:5px;"> Destruir ao Pegar
+                        <input type="checkbox" class="plugin-prop-check" data-plugin="ItemComponent" data-prop="destroyOnPickup" ${(itemComp.destroyOnPickup) ? 'checked' : ''} style="margin-right:5px;"> ${i18n.t('item.destroyPickup')}
                     </label>
                 </div>
                 <div style="margin-bottom:5px;">
                      <label style="font-size:11px; color:#ccc; display:flex; align-items:center; cursor:pointer;">
-                        <input type="checkbox" class="plugin-prop-check" data-plugin="ItemComponent" data-prop="flutuar" ${(itemComp.flutuar) ? 'checked' : ''} style="margin-right:5px;"> Efeito Flutuar
+                        <input type="checkbox" class="plugin-prop-check" data-plugin="ItemComponent" data-prop="flutuar" ${(itemComp.flutuar) ? 'checked' : ''} style="margin-right:5px;"> ${i18n.t('item.floatEffect')}
                     </label>
                 </div>
 
                 <div style="margin-top:5px; padding-top:5px; border-top:1px dashed #444;">
-                     <label style="font-size:10px; color:#aaa;">Ícone no Inventário (Sprite)</label>
+                     <label style="font-size:10px; color:#aaa;">${i18n.t('item.iconSprite')}</label>
                      <select class="plugin-prop" data-plugin="ItemComponent" data-prop="icon" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px; margin-bottom:5px;">
-                          <option value="">(Padrão/Nenhum)</option>
+                          <option value="">${i18n.t('item.defaultNone')}</option>
                           ${(() => {
                     let opts = '';
                     if (this.assetManager && this.assetManager.assets.sprites) {
@@ -3119,16 +3128,16 @@ class EditorPrincipal {
                 })()}
                      </select>
 
-                    <label style="font-size:10px; color:#aaa;">Som de Pickup (Asset ID)</label>
+                    <label style="font-size:10px; color:#aaa;">${i18n.t('item.pickupSound')}</label>
                     <input type="text" value="${itemComp.pickupSound || ''}" class="plugin-prop" data-plugin="ItemComponent" data-prop="pickupSound" style="width:100%; background:#111; color:#aaa; border:1px solid #444; padding:5px;">
                     
                     <div style="margin-top:5px;">
-                         <label style="font-size:10px; color:#aaa;">Mensagem ao Pegar (Sobrescreve ID)</label>
-                         <input type="text" value="${itemComp.mensagemColeta || ''}" placeholder="(Padrão)" class="plugin-prop" data-plugin="ItemComponent" data-prop="mensagemColeta" style="width:100%; background:#111; color:#2ecc71; border:1px solid #444; padding:5px;">
+                         <label style="font-size:10px; color:#aaa;">${i18n.t('item.pickupMessage')}</label>
+                         <input type="text" value="${itemComp.mensagemColeta || ''}" placeholder="${i18n.t('item.defaultPlaceholder')}" class="plugin-prop" data-plugin="ItemComponent" data-prop="mensagemColeta" style="width:100%; background:#111; color:#2ecc71; border:1px solid #444; padding:5px;">
                     </div>
                 </div>
             </div>`;
-            componentsHtml += createComponentHtml('ItemComponent', 'Item Coletável', '💎', '#9b59b6', itemHtml, true);
+            componentsHtml += createComponentHtml('ItemComponent', i18n.t('item.title'), '💎', '#9b59b6', itemHtml, true);
         }
 
         // 2.13 UIComponent
@@ -3149,24 +3158,24 @@ class EditorPrincipal {
             let uiHtml = `
              <div style="background:#222; padding:10px; border-radius:4px;">
                 <div style="margin-bottom:10px;">
-                    <label style="font-size:10px; color:#aaa; margin-bottom:5px; display:block;">Modo de Renderização</label>
+                    <label style="font-size:10px; color:#aaa; margin-bottom:5px; display:block;">${i18n.t('ui.renderMode')}</label>
                     <select id="prop-ui-mode" style="width:100%; background:#333; color:white; border:none; padding:5px; font-size:11px;">
-                        <option value="world" ${uiRef.renderMode === 'world' ? 'selected' : ''}>World Space (Flutuante)</option>
-                        <option value="screen" ${uiRef.renderMode === 'screen' ? 'selected' : ''}>Screen Space (HUD)</option>
+                        <option value="world" ${uiRef.renderMode === 'world' ? 'selected' : ''}>${i18n.t('ui.modeWorld')}</option>
+                        <option value="screen" ${uiRef.renderMode === 'screen' ? 'selected' : ''}>${i18n.t('ui.modeScreen')}</option>
                     </select>
                 </div>
 
                 <div style="margin-bottom:10px;">
                      <label style="font-size:11px; color:#ccc; display:flex; align-items:center; cursor:pointer;">
-                        <input type="checkbox" id="prop-ui-global" ${(uiRef.usarPlayerGlobal) ? 'checked' : ''} style="margin-right:5px;"> Usar Player Global (HUD)
+                        <input type="checkbox" id="prop-ui-global" ${(uiRef.usarPlayerGlobal) ? 'checked' : ''} style="margin-right:5px;"> ${i18n.t('ui.useGlobal')}
                     </label>
-                    <div style="font-size:9px; color:#666; margin-left:18px;">Se marcado, busca dados (HP, Inv) no Player e não nesta entidade.</div>
+                    <div style="font-size:9px; color:#666; margin-left:18px;">${i18n.t('ui.globalHint')}</div>
                 </div>
 
                 <div style="margin-bottom:10px;">
-                    <label style="font-size:10px; color:#aaa;">Imagem Slot (Vazio)</label>
+                    <label style="font-size:10px; color:#aaa;">${i18n.t('ui.slotEmpty')}</label>
                     <select id="prop-ui-img-slot" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px; margin-bottom:5px; font-size:11px;">
-                         <option value="">(Padrão)</option>
+                         <option value="">${i18n.t('ui.default')}</option>
                          ${(() => {
                     let opts = '';
                     if (this.assetManager && this.assetManager.assets.sprites) {
@@ -3179,9 +3188,9 @@ class EditorPrincipal {
                 })()}
                     </select>
 
-                    <label style="font-size:10px; color:#aaa;">Imagem Slot (Cheio/Select)</label>
+                    <label style="font-size:10px; color:#aaa;">${i18n.t('ui.slotFull')}</label>
                     <select id="prop-ui-img-full" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px; font-size:11px;">
-                         <option value="">(Padrão)</option>
+                         <option value="">${i18n.t('ui.default')}</option>
                          ${(() => {
                     let opts = '';
                     if (this.assetManager && this.assetManager.assets.sprites) {
@@ -3196,24 +3205,24 @@ class EditorPrincipal {
                 </div>
                 
                 <details style="background:#1a1a1a; padding:5px; margin-top:10px; border-radius:4px; margin-bottom:10px;">
-                    <summary style="cursor:pointer; color:#ccc; font-size:11px; user-select:none;">🎨 Inventário Avançado</summary>
+                    <summary style="cursor:pointer; color:#ccc; font-size:11px; user-select:none;">🎨 ${i18n.t('ui.inventoryAdvanced')}</summary>
                     <div style="padding-top:10px;">
                         <div style="display:flex; gap:5px; margin-bottom:10px;">
                             <div style="flex:1;">
-                                <label style="font-size:10px; color:#aaa;">Escala</label>
+                                <label style="font-size:10px; color:#aaa;">${i18n.t('ui.scale')}</label>
                                 <input type="number" id="prop-ui-scale" value="${uiRef.inventoryScale || 1.0}" step="0.1" style="width:100%; background:#111; color:white; border:1px solid #444; padding:3px;">
                             </div>
                             <div style="flex:1;">
-                                <label style="font-size:10px; color:#aaa;">Colunas</label>
+                                <label style="font-size:10px; color:#aaa;">${i18n.t('ui.columns')}</label>
                                 <input type="number" id="prop-ui-cols" value="${uiRef.inventoryCols || 5}" style="width:100%; background:#111; color:white; border:1px solid #444; padding:3px;">
                             </div>
                             <div style="flex:1;">
-                                <label style="font-size:10px; color:#aaa;">Linhas</label>
+                                <label style="font-size:10px; color:#aaa;">${i18n.t('ui.rows')}</label>
                                 <input type="number" id="prop-ui-rows" value="${uiRef.inventoryRows || 4}" style="width:100%; background:#111; color:white; border:1px solid #444; padding:3px;">
                             </div>
                         </div>
 
-                        <label style="font-size:10px; color:#aaa; font-weight:bold; margin-bottom:5px; display:block;">Moldura (9-Slice)</label>
+                        <label style="font-size:10px; color:#aaa; font-weight:bold; margin-bottom:5px; display:block;">${i18n.t('ui.frame9Slice')}</label>
                         <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:2px; margin-bottom:5px;">
                             ${['TopLeft', 'Top', 'TopRight', 'Left', 'Center', 'Right', 'BottomLeft', 'Bottom', 'BottomRight'].map(pos => {
                     if (pos === 'Center') return '<div style="background:#222;"></div>';
@@ -3229,16 +3238,16 @@ class EditorPrincipal {
                 </details>
 
                 <div style="background:#1a1a2e; padding:10px; border-radius:4px; margin-bottom:10px; border:1px dashed #444;">
-                    <div style="font-size:10px; color:#aaa; margin-bottom:5px;">Elementos Ativos:</div>
-                    <div style="font-weight:bold; color:#4ecdc4;">${uiRef.elementos.length} Elementos</div>
+                    <div style="font-size:10px; color:#aaa; margin-bottom:5px;">${i18n.t('ui.activeElements')}:</div>
+                    <div style="font-weight:bold; color:#4ecdc4;">${uiRef.elementos.length} ${i18n.t('ui.elementsCount')}</div>
                 </div>
 
                 <button id="btn-open-ui-builder" style="width:100%; background:linear-gradient(45deg, #e74c3c, #c0392b); color:white; border:none; padding:8px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:11px;">
-                    🛠️ Abrir UI Builder
+                    🛠️ ${i18n.t('ui.openBuilder')}
                 </button>
              </div>`;
 
-            componentsHtml += createComponentHtml('UIComponent', 'UI / HUD', '❤️', '#ff6b6b', uiHtml, true);
+            componentsHtml += createComponentHtml('UIComponent', i18n.t('ui.title'), '❤️', '#ff6b6b', uiHtml, true);
         }
 
         // 2.6 Scripts Loop
@@ -3256,7 +3265,7 @@ class EditorPrincipal {
                             <span style="font-weight:bold; color:#4ecdc4;">${script.scriptName || 'Script Sem Nome'}</span>
                         </div>
                         <div style="display: flex; gap: 5px;">
-                            <button class="btn-edit-script-dynamic" data-script-id="${key}" style="flex:1; background:#333; color:#a0f0a0; border:1px solid #4ecdc4; padding:5px; cursor:pointer;">📝 Editar Código</button>
+                            <button class="btn-edit-script-dynamic" data-script-id="${key}" style="flex:1; background:#333; color:#a0f0a0; border:1px solid #4ecdc4; padding:5px; cursor:pointer;">${i18n.t('script.btnEdit')}</button>
                             <button class="btn-remove-script-dynamic" data-script-id="${key}" style="width:30px; background:#ff6b6b; color:white; border:none; padding:5px; cursor:pointer;">🗑️</button>
                         </div>
                     </div>
@@ -3322,8 +3331,36 @@ class EditorPrincipal {
                 }
 
                 const isAnimProp = prop.startsWith('anim') && typeof valor === 'string';
+
+                // GERAÇÃO DINÂMICA DA CHAVE DE TRADUÇÃO
+                // Ex: MovimentacaoBasicaScript -> comp.movimentacaoBasicaScript.velocidade
+                // Ex: InimigoPatrulhaScript -> comp.inimigoPatrulhaScript.hpMax
+                const className = scriptComp.instance ? scriptComp.instance.constructor.name : 'Script';
+
+                // Converte primeira letra para minúscula (PascalCase -> camelCase)
+                const classKey = className.charAt(0).toLowerCase() + className.slice(1);
+
+                const transKey = `comp.${classKey}.${prop}`;
+
+                // Tenta traduzir. Se falhar, usa uma lógica de fallback inteligente.
+                let label = i18n.t(transKey);
+
+                // Se a tradução retornou a própria chave (falhou)
+                if (label === transKey) {
+                    // Tenta propriedades genéricas (ex: prop.speed)
+                    const genericKey = `prop.${prop}`;
+                    const genericLabel = i18n.t(genericKey);
+
+                    if (genericLabel !== genericKey) {
+                        label = genericLabel;
+                    } else {
+                        // Fallback final: Capitaliza o nome da propriedade (ex: velocidade -> Velocidade)
+                        label = prop.charAt(0).toUpperCase() + prop.slice(1);
+                    }
+                }
+
                 html += `<div style="margin-bottom:4px;">`;
-                html += `<label style="font-size:10px; color:#888;">${prop}</label>`;
+                html += `<label style="font-size:10px; color:#888;">${label}</label>`;
 
                 if (isAnimProp) {
                     html += `<div class="anim-dropzone-script" data-script-id="${scriptId}" data-prop="${prop}" style="border:1px dashed #666; padding:4px; font-size:11px; color:#cfc; cursor:default;">${valor || '(None)'}</div>`;
@@ -4326,7 +4363,7 @@ class EditorPrincipal {
 
         const header = `
             <div style="padding:15px; background:#2c1e2e; border-bottom:1px solid #ff6b6b; display:flex; justify-content:space-between; align-items:center;">
-                <h3 style="margin:0; color:#ff6b6b;">❤️ UI Builder</h3>
+                <h3 style="margin:0; color:#ff6b6b;">❤️ ${i18n.t('ui.builderTitle')}</h3>
                 <button id="btn-close-ui" style="background:none; border:none; color:#ff6b6b; cursor:pointer; font-size:16px;">✖</button>
             </div>
         `;
@@ -4336,7 +4373,7 @@ class EditorPrincipal {
             <div style="flex:1; display:flex;">
                 <!-- Sidebar Esquerda -->
                 <div style="width:250px; background:#222; border-right:1px solid #444; display:flex; flex-direction:column;">
-                    <button id="btn-add-element" style="margin:10px; padding:8px; background:#4ecdc4; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">+ Novo Elemento</button>
+                    <button id="btn-add-element" style="margin:10px; padding:8px; background:#4ecdc4; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">${i18n.t('ui.newElement')}</button>
                     <div id="ui-elements-list" style="flex:1; overflow-y:auto; padding:5px;"></div>
                 </div>
 
@@ -4345,35 +4382,35 @@ class EditorPrincipal {
                     <div id="ui-element-config" style="display:none;">
                         <input type="hidden" id="edit-element-id">
                         
-                        <h4 style="color:#aaa; border-bottom:1px solid #444; padding-bottom:5px; margin-top:0;">Configuração</h4>
+                        <h4 style="color:#aaa; border-bottom:1px solid #444; padding-bottom:5px; margin-top:0;">${i18n.t('ui.config')}</h4>
                         
                         <!-- Tipo -->
                         <div style="margin-bottom:15px; background:#252535; padding:10px; border-radius:4px;">
-                            <label style="display:block; color:#888; font-size:12px; margin-bottom:5px;">Tipo de Elemento</label>
+                            <label style="display:block; color:#888; font-size:12px; margin-bottom:5px;">${i18n.t('ui.elementType')}</label>
                             <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                                <label class="ui-type-opt"><input type="radio" name="el-type" value="barra"> Barra</label>
-                                <label class="ui-type-opt"><input type="radio" name="el-type" value="icones"> Ícones</label>
-                                <label class="ui-type-opt"><input type="radio" name="el-type" value="imagem"> Imagem</label>
-                                <label class="ui-type-opt"><input type="radio" name="el-type" value="texto"> Texto</label>
-                                <label class="ui-type-opt"><input type="radio" name="el-type" value="inventario"> Inventário</label>
+                                <label class="ui-type-opt"><input type="radio" name="el-type" value="barra"> ${i18n.t('ui.typeBar')}</label>
+                                <label class="ui-type-opt"><input type="radio" name="el-type" value="icones"> ${i18n.t('ui.typeIcons')}</label>
+                                <label class="ui-type-opt"><input type="radio" name="el-type" value="imagem"> ${i18n.t('ui.typeImage')}</label>
+                                <label class="ui-type-opt"><input type="radio" name="el-type" value="texto"> ${i18n.t('ui.typeText')}</label>
+                                <label class="ui-type-opt"><input type="radio" name="el-type" value="inventario"> ${i18n.t('ui.typeInventory')}</label>
                             </div>
                         </div>
 
                         <!-- Data Binding -->
                         <div style="margin-bottom:15px; display:flex; gap:10px;">
                             <div style="flex:1;">
-                                <label style="display:block; color:#4ecdc4; font-size:10px;">Variável Atual</label>
+                                <label style="display:block; color:#4ecdc4; font-size:10px;">${i18n.t('ui.varCurrent')}</label>
                                 <input type="text" id="el-target" placeholder="ex: hp" style="width:100%; background:#111; border:1px solid #444; color:white; padding:5px;">
                             </div>
                             <div style="flex:1;">
-                                <label style="display:block; color:#4ecdc4; font-size:10px;">Variável Máxima</label>
+                                <label style="display:block; color:#4ecdc4; font-size:10px;">${i18n.t('ui.varMax')}</label>
                                 <input type="text" id="el-targetMax" placeholder="ex: hpMax" style="width:100%; background:#111; border:1px solid #444; color:white; padding:5px;">
                             </div>
                         </div>
                         
                         <!-- Imagem / Asset -->
                         <div id="grp-imagem" style="margin-bottom:15px; display:none;">
-                            <label style="display:block; color:#ff9f43; font-size:12px; margin-bottom:5px;">Asset de Imagem</label>
+                            <label style="display:block; color:#ff9f43; font-size:12px; margin-bottom:5px;">${i18n.t('ui.imgAsset')}</label>
                             <div style="display:flex; gap:5px;">
                                 <input type="text" id="el-assetId" placeholder="Asset ID" style="flex:1; background:#111; border:1px solid #444; color:white; padding:5px;">
                                 <button id="btn-pick-asset" style="padding:5px; cursor:pointer;">🔍</button>
@@ -4382,7 +4419,7 @@ class EditorPrincipal {
 
                         <!-- Texto -->
                         <div id="grp-texto" style="margin-bottom:15px; display:none;">
-                            <label style="display:block; color:#ff9f43; font-size:12px; margin-bottom:5px;">Texto / Template</label>
+                            <label style="display:block; color:#ff9f43; font-size:12px; margin-bottom:5px;">${i18n.t('ui.textTemplate')}</label>
                             <input type="text" id="el-textoFixo" placeholder="Ex: HP: {val}/{max}" style="width:100%; background:#111; border:1px solid #444; color:white; padding:5px;">
                             <div style="font-size:10px; color:#666; margin-top:3px;">Use {val}, {max}, {pct} para valores dinâmicos.</div>
                             
@@ -4414,7 +4451,7 @@ class EditorPrincipal {
 
                         <!-- Estilo Barra -->
                         <div id="grp-style-bar" style="margin-bottom:15px;">
-                            <label style="display:block; color:#888; font-size:12px; margin-bottom:5px;">Estilo (Preenchimento / Fundo)</label>
+                            <label style="display:block; color:#888; font-size:12px; margin-bottom:5px;">${i18n.t('ui.styleFillBg')}</label>
                             <div style="display:flex; gap:10px;">
                                 <input type="color" id="el-color-fill" style="flex:1; height:30px;">
                                 <input type="color" id="el-color-bg" style="flex:1; height:30px;">
@@ -4422,11 +4459,11 @@ class EditorPrincipal {
                         </div>
 
                         <div style="text-align:right; margin-top:20px; border-top:1px solid #333; padding-top:10px;">
-                             <button id="btn-delete-element" style="background:#c0392b; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer;">🗑️ Remover</button>
-                             <button id="btn-save-element" style="background:#27ae60; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; font-weight:bold;">💾 Aplicar</button>
+                             <button id="btn-delete-element" style="background:#c0392b; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer;">🗑️ ${i18n.t('ui.remove')}</button>
+                             <button id="btn-save-element" style="background:#27ae60; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; font-weight:bold;">💾 ${i18n.t('ui.apply')}</button>
                         </div>
                     </div>
-                    <div id="ui-empty-state" style="text-align:center; padding-top:50px; color:#666;">Selecione um elemento para editar.</div>
+                    <div id="ui-empty-state" style="text-align:center; padding-top:50px; color:#666;">${i18n.t('ui.builderSelectHint')}</div>
                 </div>
             </div>`;
 
@@ -5301,9 +5338,33 @@ class EditorPrincipal {
                 // Prefira o nome amigável do componente (que acabamos de setar em adicionarScript)
                 // Se não houver, tenta o nome da classe da instância
                 // Se não, fallback.
-                const nomeDisplay = comp.nome && comp.nome !== 'ScriptComponent'
-                    ? comp.nome
-                    : (comp.instance ? comp.instance.constructor.name : 'Script sem nome');
+                // --- TRANSLATION MAPPING LOGIC ---
+                // Verifica o nome amigável ou o nome da classe
+                let nomeRaw = comp.nome || (comp.instance ? comp.instance.constructor.name : '');
+
+                // Mapa de tradução para Cabeçalhos
+                const scriptMap = {
+                    'Movimentação RPG': 'script.rpgTopDown',
+                    'MovimentacaoBasicaScript': 'script.rpgTopDown', // Class Name
+                    'Movimentação Plataforma': 'script.platform',
+                    'MovimentacaoPlataformaScript': 'script.platform',
+                    'IA Patrulha': 'script.aiPatrol',
+                    'InimigoPatrulhaScript': 'script.aiPatrol',
+                    'Stats RPG': 'script.statsRpg',
+                    'Sistema de Morte': 'script.deathFade',
+                    'Morte com Animação': 'script.deathAnim',
+                    'Simulador de Morte': 'script.deathSim',
+                    'Combate Melee': 'script.melee',
+                    'Sistema de Respawn': 'script.respawn',
+                    'Controlador de Inventário': 'script.inventory',
+                    'Sistema de Interação': 'script.interaction',
+                    'Área de Mensagem': 'script.areaMessage',
+                    'Texto Flutuante': 'script.floatingText'
+                };
+
+                // Tenta traduzir ou usa o nome original
+                let nomeDisplay = scriptMap[nomeRaw] ? i18n.t(scriptMap[nomeRaw]) : nomeRaw;
+                if (!nomeDisplay) nomeDisplay = 'Script sem nome';
 
                 // --- PARSE DE CONSTANTES GLOBAIS ---
                 let globalConstsHtml = '';
@@ -5376,7 +5437,29 @@ class EditorPrincipal {
 
                             propriedadesHtml += `
                                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 5px; flex-direction: ${key === 'mensagem' ? 'column' : 'row'};">
-                                    <label style="font-size: 10px; color: #aaa; margin-bottom: ${key === 'mensagem' ? '3px' : '0'};">${key}</label>
+                                    <label style="font-size: 10px; color: #aaa; margin-bottom: ${key === 'mensagem' ? '3px' : '0'};">
+                                        ${(() => {
+                                    // Mapa de tradução para Propriedades
+                                    const propMap = {
+                                        'velocidade': 'prop.speed',
+                                        'velocidadeHorizontal': 'prop.speed',
+                                        'velocidadePerseguicao': 'prop.speed', // Pode ser mais específico se quiser
+                                        'state': 'prop.state',
+                                        'estado': 'prop.state',
+                                        'dano': 'prop.damage',
+                                        'hp': 'prop.health',
+                                        'hpMax': 'prop.maxHealth',
+                                        'distancia': 'prop.distance',
+                                        'cooldown': 'prop.cooldown',
+                                        'duracao': 'prop.duration',
+                                        'range': 'prop.range',
+                                        'forcaPulo': 'prop.force',
+                                        'gravidade': 'prop.gravity'
+                                    };
+                                    // Retorna tradução ou chave original (Capitalizada)
+                                    return propMap[key] ? i18n.t(propMap[key]) : key.charAt(0).toUpperCase() + key.slice(1);
+                                })()}
+                                    </label>
                                     ${inputHtml}
                                 </div>
                             `;
@@ -5397,7 +5480,7 @@ class EditorPrincipal {
                         </div>
 
                         <div style="display: flex; gap: 5px;">
-                            <button class="btn-edit-script-dynamic" data-script-id="${nome}" style="flex: 1; background: #4ecdc4; color: #1a1a2e; border: none; padding: 4px; border-radius: 4px; cursor: pointer; font-size: 11px;">✏️ Editar Código</button>
+                            <button class="btn-edit-script-dynamic" data-script-id="${nome}" style="flex: 1; background: #4ecdc4; color: #1a1a2e; border: none; padding: 4px; border-radius: 4px; cursor: pointer; font-size: 11px;">${i18n.t('script.btnEdit')}</button>
                             <button class="btn-remove-script-dynamic" data-script-id="${nome}" style="flex: 0 0 30px; background: #ff6b6b; color: white; border: none; padding: 4px; border-radius: 4px; cursor: pointer;">🗑️</button>
                         </div>
                     </div >
@@ -5408,21 +5491,22 @@ class EditorPrincipal {
         const addHtml = `
     <div style="display: flex; gap: 5px; flex-direction: column; margin-top: 5px; border-top: 1px solid #333; padding-top: 5px;" >
                 <select id="select-script-tipo" style="background: #1a1a2e; color: #fff; border: 1px solid #444; padding: 5px; border-radius: 4px;">
-                    <option value="plataforma">Movimento Plataforma (Side-Scroller)</option>
-                    <option value="basico">Movimento RPG (Top-Down)</option>
-                    <option value="patrulha">IA Inimigo (Patrulha)</option>
-                    <option value="ataqueMelee">Combate Melee (Ataque)</option>
-                    <option value="respawn">Sistema de Respawn (Inimigo)</option>
-                    <option value="morte">Efeito de Morte (Fade)</option>
-                    <option value="morteAnimacao">💀 Morte com Animação</option>
-                    <option value="simuladorMorte">🔧 Simulador de Morte (DEBUG)</option>
-                    <option value="textoFlutuante">Plugin: Texto Flutuante</option>
-                    <option value="inventoryControl">Controlador de Inventário</option>
-                    <option value="interacao">Sistema de Interação (NPC/Placa)</option>
-                    <option value="areaMensagem">Área de Mensagem (Tutorial/Tags)</option>
-                    <option value="vazio">Script Vazio</option>
+                    <option value="vazio">${i18n.t('script.empty')}</option>
+                    <option value="basico">${i18n.t('script.rpgTopDown')}</option>
+                    <option value="plataforma">${i18n.t('script.platform')}</option>
+                    <option value="patrulha">${i18n.t('script.aiPatrol')}</option>
+                    <option value="ataqueMelee">${i18n.t('script.melee')}</option>
+                    <option value="respawn">${i18n.t('script.respawn')}</option>
+                    <option value="morte">${i18n.t('script.deathFade')}</option>
+                    <option value="morteAnimacao">${i18n.t('script.deathAnim')}</option>
+                    <option value="simuladorMorte">${i18n.t('script.deathSim')}</option>
+                    <option value="textoFlutuante">${i18n.t('script.floatingText')}</option>
+                    <option value="inventoryControl">${i18n.t('script.inventory')}</option>
+                    <option value="interacao">${i18n.t('script.interaction')}</option>
+                    <option value="areaMensagem">${i18n.t('script.areaMessage')}</option>
+                    <option value="statsRPG">${i18n.t('script.statsRpg')}</option>
                 </select>
-                <button id="btn-add-script" style="width: 100%; background: #2a2a4a; color: white; border: 1px solid #444; padding: 5px; border-radius: 4px; cursor: pointer; border-left: 3px solid #4ecdc4;">➕ Adicionar Novo Script</button>
+                <button id="btn-add-script" style="width: 100%; background: #2a2a4a; color: white; border: 1px solid #444; padding: 5px; border-radius: 4px; cursor: pointer; border-left: 3px solid #4ecdc4;">${i18n.t('script.btnAdd')}</button>
             </div >
     `;
 

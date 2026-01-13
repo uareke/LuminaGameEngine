@@ -16,7 +16,7 @@
         <!-- Toolbar Superior -->
         <div class="toolbar">
             <div class="toolbar-logo">
-                <span>🎮 Game Engine Editor</span>
+                <span>🎮 LUMINA - Game Engine</span>
             </div>
 
             <!-- Grupo: Ferramentas de Criação -->
@@ -48,31 +48,33 @@
             <!-- Grupo: Controles de Execução -->
             <div class="toolbar-group">
 
-                <button class="btn-play" id="btn-play" title="Executar (Space)">▶</button>
-                <button class="btn-pause hidden" id="btn-pause" title="Pausar"><span data-i18n="toolbar.pause">⏸
+                <button class="btn-play" id="btn-play" data-i18n-title="tooltip.play">▶</button>
+                <button class="btn-pause hidden" id="btn-pause" data-i18n-title="tooltip.pause"><span
+                        data-i18n="toolbar.pause">⏸
                         Pause</span></button>
-                <button class="btn-stop hidden" id="btn-stop" title="Parar"><span data-i18n="toolbar.stop">◼
+                <button class="btn-stop hidden" id="btn-stop" data-i18n-title="tooltip.stop"><span
+                        data-i18n="toolbar.stop">◼
                         Stop</span></button>
             </div>
 
             <!-- Grupo: Ações de Projeto -->
             <div class="toolbar-group">
-                <button class="btn-new" id="btn-new" title="Novo Projeto"><span
+                <button class="btn-new" id="btn-new" data-i18n-title="tooltip.new"><span
                         data-i18n="menu.new">Novo</span></button>
-                <button class="btn-load" id="btn-load" title="Carregar"><span
+                <button class="btn-load" id="btn-load" data-i18n-title="tooltip.load"><span
                         data-i18n="menu.open">Carregar</span></button>
-                <button class="btn-save" id="btn-save" title="Salvar (Ctrl+S)"><span
+                <button class="btn-save" id="btn-save" data-i18n-title="tooltip.save"><span
                         data-i18n="menu.save">Salvar</span></button>
                 <input type="file" id="input-load-project" style="display:none" accept=".json">
-                <button class="btn-export" id="btn-export" title="Exportar"><span
+                <button class="btn-export" id="btn-export" data-i18n-title="tooltip.export"><span
                         data-i18n="menu.export">Exportar</span></button>
-                <button class="btn-tool" id="btn-run-web" title="Rodar no Navegador (Web Player)"
+                <button class="btn-tool" id="btn-run-web" data-i18n-title="tooltip.playWeb"
                     style="border: 1px solid #c9a0ff; color: #c9a0ff; margin-left:10px;">
                     🌐 Play Web
                 </button>
-                <button class="btn-scene-settings" id="btn-scene-settings"
-                    title="Configurações da Cena (Cor de Fundo)"><span data-i18n="panel.scene">Cena</span></button>
-                <button class="btn-settings" id="btn-settings" title="Configuraciones">
+                <button class="btn-scene-settings" id="btn-scene-settings" data-i18n-title="tooltip.sceneSettings"><span
+                        data-i18n="panel.scene">Cena</span></button>
+                <button class="btn-settings" id="btn-settings" data-i18n-title="tooltip.settings">
                     <img src="assets/icons/settings.png" alt="Settings">
                 </button>
 
