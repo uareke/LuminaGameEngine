@@ -27,7 +27,7 @@ class Engine {
         this.simulado = true;
         this.tempoJogo = 0; // Tempo total em segundos (Simulado)
         this.onPostRender = null; // Callback de UI Overlay (novo)
-        this.debugMode = true; // [FIX] Enable Debug Mode by default for collision boxes
+        this.debugMode = false; // Debug mode disabled by default
 
         this.configurarInput();
     }

@@ -563,7 +563,8 @@ class CollisionComponent {
         this.verificarTriggers(entidade);
 
         // 1.8 Colisão com Inimigos (Dano/Morte)
-        this.verificarInimigos(entidade);
+        // REMOVIDO: A lógica de combate agora é feita via Scripts (StatsRPG/InimigoPatrulha)
+        // this.verificarInimigos(entidade);
 
         // 2. Chão Robusto
         this.verificarChaoRobusto(entidade);

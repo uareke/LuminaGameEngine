@@ -136,7 +136,7 @@ class EditorPrincipal {
             snapToGrid: true,
             showGrid: true,
             showGrid: true,
-            showGizmos: true, // [FIX] Enable Gizmos by default
+            showGizmos: false, // Gizmos disabled by default
             gameScale: 1.0 // Escala Global (Zoom no Play Mode)
         };
 
@@ -4615,7 +4615,7 @@ class EditorPrincipal {
         `;
 
         const header = `
-            <div style="padding:15px; background:#2c1e2e; border-bottom:1px solid #ff6b6b; display:flex; justify-content:space-between; align-items:center;">
+            <div id="ui-builder-header" style="padding:15px; background:#2c1e2e; border-bottom:1px solid #ff6b6b; display:flex; justify-content:space-between; align-items:center; cursor: move; user-select: none;">
                 <h3 style="margin:0; color:#ff6b6b;">❤️ ${i18n.t('ui.builderTitle')}</h3>
                 <button id="btn-close-ui" style="background:none; border:none; color:#ff6b6b; cursor:pointer; font-size:16px;">✖</button>
             </div>
@@ -4636,6 +4636,12 @@ class EditorPrincipal {
                         <input type="hidden" id="edit-element-id">
                         
                         <h4 style="color:#aaa; border-bottom:1px solid #444; padding-bottom:5px; margin-top:0;">${i18n.t('ui.config')}</h4>
+                        
+                        <!-- Nome / Descrição -->
+                        <div style="margin-bottom:15px;">
+                            <label style="display:block; color:#4ecdc4; font-size:10px; margin-bottom:3px;">Nome / Descrição (Opcional)</label>
+                            <input type="text" id="el-nome" placeholder="Ex: Barra de Vida" style="width:100%; background:#111; border:1px solid #444; color:white; padding:5px;">
+                        </div>
                         
                         <!-- Tipo -->
                         <div style="margin-bottom:15px; background:#252535; padding:10px; border-radius:4px;">
@@ -4664,9 +4670,13 @@ class EditorPrincipal {
                         <!-- Imagem / Asset -->
                         <div id="grp-imagem" style="margin-bottom:15px; display:none;">
                             <label style="display:block; color:#ff9f43; font-size:12px; margin-bottom:5px;">${i18n.t('ui.imgAsset')}</label>
-                            <div style="display:flex; gap:5px;">
+                            <div style="display:flex; gap:5px; align-items:center;">
                                 <input type="text" id="el-assetId" placeholder="Asset ID" style="flex:1; background:#111; border:1px solid #444; color:white; padding:5px;">
                                 <button id="btn-pick-asset" style="padding:5px; cursor:pointer;">🔍</button>
+                            </div>
+                            <div style="margin-top:5px;">
+                                <label style="font-size:10px; color:#aaa;">Escala (Multiplicador)</label>
+                                <input type="number" id="el-scale" placeholder="1.0" step="0.1" style="width:100%; background:#111; border:1px solid #444; color:white; padding:5px;">
                             </div>
                         </div>
 
@@ -4679,6 +4689,22 @@ class EditorPrincipal {
                             <div style="display:flex; gap:10px; margin-top:5px;">
                                 <input type="number" id="el-fontSize" placeholder="Size" value="12" style="width:60px; background:#111; border:1px solid #444; color:white; padding:5px;">
                                 <input type="color" id="el-color-text" value="#ffffff" style="height:28px;">
+                            </div>
+                            
+                            <!-- Texto Styling -->
+                             <div style="margin-top:10px; border-top:1px solid #333; padding-top:5px;">
+                                <label style="font-size:10px; color:#aaa; display:block; margin-bottom:3px;">Borda (Stroke)</label>
+                                <div style="display:flex; gap:5px;">
+                                    <input type="number" id="el-strokeW" placeholder="0px" style="flex:1; background:#111; border:1px solid #444; color:white; padding:5px;">
+                                    <input type="color" id="el-strokeC" value="#000000" style="height:28px;">
+                                </div>
+                            </div>
+                            <div style="margin-top:5px;">
+                                <label style="font-size:10px; color:#aaa; display:block; margin-bottom:3px;">Sombra (Shadow)</label>
+                                <div style="display:flex; gap:5px;">
+                                    <input type="number" id="el-shadowB" placeholder="Blur" style="flex:1; background:#111; border:1px solid #444; color:white; padding:5px;">
+                                    <input type="color" id="el-shadowC" value="#000000" style="height:28px;">
+                                </div>
                             </div>
                         </div>
 
@@ -4705,9 +4731,31 @@ class EditorPrincipal {
                         <!-- Estilo Barra -->
                         <div id="grp-style-bar" style="margin-bottom:15px;">
                             <label style="display:block; color:#888; font-size:12px; margin-bottom:5px;">${i18n.t('ui.styleFillBg')}</label>
+                            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                                <div style="flex:1;">
+                                    <label style="font-size:10px; color:#aaa;">Preenchimento</label>
+                                    <input type="color" id="el-color-fill" style="width:100%; height:30px;">
+                                </div>
+                                <div style="flex:1;">
+                                    <label style="font-size:10px; color:#aaa;">Fundo</label>
+                                    <input type="color" id="el-color-bg" style="width:100%; height:30px;">
+                                </div>
+                            </div>
+
+                             <!-- Borda & Arredondamento -->
                             <div style="display:flex; gap:10px;">
-                                <input type="color" id="el-color-fill" style="flex:1; height:30px;">
-                                <input type="color" id="el-color-bg" style="flex:1; height:30px;">
+                                <div style="flex:1;">
+                                    <label style="font-size:10px; color:#aaa;">Raio (px)</label>
+                                    <input type="number" id="el-radius" placeholder="0" style="width:100%; background:#111; border:1px solid #444; color:white; padding:5px;">
+                                </div>
+                                <div style="flex:1;">
+                                    <label style="font-size:10px; color:#aaa;">Borda (px)</label>
+                                    <input type="number" id="el-borderW" placeholder="0" style="width:100%; background:#111; border:1px solid #444; color:white; padding:5px;">
+                                </div>
+                                <div style="width:50px;">
+                                    <label style="font-size:10px; color:#aaa;">Cor</label>
+                                    <input type="color" id="el-borderC" style="width:100%; height:28px; padding:0; border:none;">
+                                </div>
                             </div>
                         </div>
 
@@ -4738,7 +4786,54 @@ class EditorPrincipal {
             listContainer.innerHTML = '';
             uiComponent.elementos.forEach((el, index) => {
                 const item = document.createElement('div');
-                item.style.cssText = `padding: 8px; border-bottom:1px solid #333; cursor:pointer; background: ${currentEditingId === index ? '#444' : 'transparent'}; color: ${currentEditingId === index ? '#fff' : '#aaa'}; display:flex; align-items:center; gap:5px;`;
+                item.style.cssText = `padding: 8px; border-bottom:1px solid #333; cursor:grab; background: ${currentEditingId === index ? '#444' : 'transparent'}; color: ${currentEditingId === index ? '#fff' : '#aaa'}; display:flex; align-items:center; gap:5px; transition: border-color 0.2s;`;
+                item.draggable = true;
+
+                // Drag Events
+                item.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', index);
+                    e.dataTransfer.effectAllowed = 'move';
+                    item.style.opacity = '0.5';
+                });
+
+                item.addEventListener('dragend', (e) => {
+                    item.style.opacity = '1';
+                    renderList(); // Refresh visuals
+                });
+
+                item.addEventListener('dragover', (e) => {
+                    e.preventDefault(); // Necessário para permitir o drop
+                    e.dataTransfer.dropEffect = 'move';
+                    item.style.borderTop = '2px solid #4ecdc4'; // Visual cue
+                });
+
+                item.addEventListener('dragleave', (e) => {
+                    item.style.borderTop = 'none';
+                    item.style.borderBottom = '1px solid #333';
+                });
+
+                item.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                    const toIndex = index;
+
+                    if (fromIndex !== toIndex) {
+                        // Move element
+                        const movedItem = uiComponent.elementos.splice(fromIndex, 1)[0];
+                        uiComponent.elementos.splice(toIndex, 0, movedItem);
+
+                        // Atualiza seleção se estiver editando o item movido
+                        if (currentEditingId === fromIndex) {
+                            currentEditingId = toIndex;
+                        } else if (currentEditingId === toIndex) {
+                            currentEditingId = currentEditingId + (fromIndex < toIndex ? -1 : 1);
+                        }
+
+                        renderList();
+                        this.atualizarPainelPropriedades();
+                    }
+                });
+
 
                 let icon = '❓';
                 if (el.tipo === 'barra') icon = '📏';
@@ -4747,7 +4842,8 @@ class EditorPrincipal {
                 else if (el.tipo === 'texto') icon = '📝';
                 else if (el.tipo === 'inventario') icon = '🎒';
 
-                item.innerHTML = `<span>${icon}</span><span style="font-size:12px;">${el.tipo}</span>`;
+                const displayName = el.nome || el.tipo;
+                item.innerHTML = `<span>${icon}</span><span style="font-size:12px;">${displayName}</span>`;
                 item.onclick = () => editElement(index);
                 listContainer.appendChild(item);
             });
@@ -4776,6 +4872,7 @@ class EditorPrincipal {
             updateVisibility(el.tipo);
 
             // Campos comuns
+            modal.querySelector('#el-nome').value = el.nome || '';
             modal.querySelector('#el-target').value = el.alvo || '';
             modal.querySelector('#el-targetMax').value = el.alvoMax || '';
             modal.querySelector('#el-offsetX').value = el.offsetX || 0;
@@ -4786,14 +4883,31 @@ class EditorPrincipal {
             // Campos específicos
             modal.querySelector('#el-color-fill').value = el.corPreenchimento || '#ffffff';
             modal.querySelector('#el-color-bg').value = el.corFundo || '#000000';
+            modal.querySelector('#el-radius').value = el.borderRadius || 0;
+            modal.querySelector('#el-borderW').value = el.borderWidth || 0;
+            modal.querySelector('#el-borderC').value = el.borderColor || '#000000';
             modal.querySelector('#el-assetId').value = el.assetId || '';
+            modal.querySelector('#el-scale').value = el.scale || 1.0;
             modal.querySelector('#el-textoFixo').value = el.textoFixo || '';
             modal.querySelector('#el-fontSize').value = el.tamanhoFonte || 12;
             modal.querySelector('#el-color-text').value = el.corTexto || '#ffffff';
+            modal.querySelector('#el-strokeW').value = el.strokeWidth || 0;
+            modal.querySelector('#el-strokeC').value = el.strokeColor || '#000000';
+            modal.querySelector('#el-shadowB').value = el.shadowBlur || 0;
+            modal.querySelector('#el-shadowC').value = el.shadowColor || '#000000';
         };
 
         modal.querySelector('#btn-add-element').onclick = () => {
-            uiComponent.elementos.push({ tipo: 'barra', offsetX: 10, offsetY: 10, largura: 100, altura: 10, corPreenchimento: '#ff0000', corFundo: '#333333' });
+            uiComponent.elementos.push({
+                nome: 'Novo Elemento',
+                tipo: 'barra',
+                offsetX: 10,
+                offsetY: 10,
+                largura: 100,
+                altura: 10,
+                corPreenchimento: '#ff0000',
+                corFundo: '#333333'
+            });
             editElement(uiComponent.elementos.length - 1);
         };
 
@@ -4801,6 +4915,7 @@ class EditorPrincipal {
             if (currentEditingId === null) return;
             const el = uiComponent.elementos[currentEditingId];
 
+            el.nome = modal.querySelector('#el-nome').value;
             el.tipo = modal.querySelector('input[name="el-type"]:checked').value;
             el.alvo = modal.querySelector('#el-target').value;
             el.alvoMax = modal.querySelector('#el-targetMax').value;
@@ -4812,10 +4927,18 @@ class EditorPrincipal {
             // Específicos
             el.corPreenchimento = modal.querySelector('#el-color-fill').value;
             el.corFundo = modal.querySelector('#el-color-bg').value;
+            el.borderRadius = parseFloat(modal.querySelector('#el-radius').value) || 0;
+            el.borderWidth = parseFloat(modal.querySelector('#el-borderW').value) || 0;
+            el.borderColor = modal.querySelector('#el-borderC').value;
             el.assetId = modal.querySelector('#el-assetId').value;
+            el.scale = parseFloat(modal.querySelector('#el-scale').value) || 1.0;
             el.textoFixo = modal.querySelector('#el-textoFixo').value;
             el.tamanhoFonte = parseFloat(modal.querySelector('#el-fontSize').value);
             el.corTexto = modal.querySelector('#el-color-text').value;
+            el.strokeWidth = parseFloat(modal.querySelector('#el-strokeW').value) || 0;
+            el.strokeColor = modal.querySelector('#el-strokeC').value;
+            el.shadowBlur = parseFloat(modal.querySelector('#el-shadowB').value) || 0;
+            el.shadowColor = modal.querySelector('#el-shadowC').value;
 
             renderList();
             this.atualizarPainelPropriedades();
@@ -4887,6 +5010,38 @@ class EditorPrincipal {
 
         modal.querySelector('#btn-close-ui').onclick = () => document.body.removeChild(modal);
         renderList();
+
+        // --- Drag Logic ---
+        const headerEl = modal.querySelector('#ui-builder-header');
+        let isDragging = false;
+        let startX, startY, initialLeft, initialTop;
+
+        headerEl.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+
+            // Remove transform centering logic to allow absolute positioning
+            const rect = modal.getBoundingClientRect();
+            modal.style.transform = 'none';
+            modal.style.left = rect.left + 'px';
+            modal.style.top = rect.top + 'px';
+
+            initialLeft = rect.left;
+            initialTop = rect.top;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            modal.style.left = (initialLeft + dx) + 'px';
+            modal.style.top = (initialTop + dy) + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
     }
 
     /**
@@ -5557,21 +5712,29 @@ class EditorPrincipal {
                                     componente.scriptName === 'StatsRPG' ||
                                     componente.scriptName === 'SimuladorMorte' ||
                                     componente.scriptName === 'DeathScreenScript' ||
-                                    componente.scriptName === 'RespawnScript') {
+                                    componente.scriptName === 'RespawnScript' ||
+                                    componente.scriptName === 'InimigoPatrulhaScript') {
                                     const source = componente.source || '';
                                     console.log('[Auto-Patch] Script type matched. Checking version...');
                                     console.log('[Auto-Patch] Has v5.0.1+?', source.includes('REFACTOR-FIXED'));
 
-                                    // FORCE UPDATE para StatsRPG e SimuladorMorte se não tiver as correções recentes
+                                    // FORCE UPDATE para StatsRPG                                    // FORCE UPDATE
                                     const needsUpdate = !source.includes('v5.0.1 REFACTOR-FIXED') ||
-                                        (componente.scriptName === 'StatsRPG' && !source.includes('StatsRPG v2')) ||
+                                        (componente.scriptName === 'StatsRPG' && !source.includes('StatsRPG v5')) ||
                                         (componente.scriptName === 'SimuladorMorte' && !source.includes('Diagnosticando')) ||
-                                        (componente.scriptName === 'RespawnScript' && !source.includes('Respawn v3'));
+                                        (componente.scriptName === 'RespawnScript' && !source.includes('Respawn v7')) ||
+                                        (componente.scriptName === 'CombateMeleeScript' && !source.includes('receberDano')) || // Fix: Usa sistema de HP
+                                        (componente.scriptName === 'InimigoPatrulhaScript' && !source.includes('IA Patrulha v10')); // v10 = XP Debug & Hook Fix
+
+                                    if (componente.scriptName === 'RespawnScript') {
+                                        console.log('[Auto-Patch Debug] Checking RespawnScript on', entidade.nome, 'Needs Update:', needsUpdate);
+                                    }
 
                                     if (needsUpdate && typeof GeradorScript !== 'undefined') {
                                         console.log(`🔄 [Auto-Patch] Atualizando ${componente.scriptName}...`);
                                         try {
                                             const gerador = new GeradorScript();
+
                                             let newSource = '';
 
                                             // Seleciona o gerador correto
@@ -5584,6 +5747,8 @@ class EditorPrincipal {
                                                 newSource = gerador.gerarScriptMorte();
                                             } else if (componente.scriptName === 'RespawnScript') {
                                                 newSource = gerador.gerarScriptRespawnInimigo(); // O nome do método é enganoso, mas gera 'class RespawnScript'
+                                            } else if (componente.scriptName === 'InimigoPatrulhaScript') {
+                                                newSource = gerador.gerarIAInimigoPatrulha({ parametros: { velocidade: 100, distancia: 200 } });
                                             } else {
                                                 // Default (MovimentacaoPlataforma)
                                                 const infoSimulado = {
