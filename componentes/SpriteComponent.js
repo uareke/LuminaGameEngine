@@ -549,9 +549,28 @@ export class SpriteComponent {
         }
 
         // === EFEITO DE PISCAR (INVENCIBILIDADE) ===
-        // Se a entidade está piscando, aplicar transparência
+        // Oscila a opacidade para criar efeito de piscar
         if (this.entidade._piscando) {
-            ctx.globalAlpha = 0.3;
+            // Pisca rápido (4 vezes por segundo)
+            const blinkSpeed = 200; // ms
+            const phase = Date.now() % blinkSpeed;
+            ctx.globalAlpha = phase < (blinkSpeed / 2) ? 1.0 : 0.2;
+        }
+
+        // === EFEITO DE TINT (DANO) ===
+        // Pinta o sprite de uma cor (ex: vermelho)
+        // Requer composite operation 'source-atop' ou similar
+        let tintColor = this.entidade._tint;
+
+        // Se estiver "piscando" (invencível), pode ter um tint especial (ex: branco)
+        // se o usuário quiser. Por padrão, mantém a cor original ou o tint de dano.
+
+        // Hack para Tint:
+        // O Canvas API não tem "tint" direto fácil sem buffer offscreen.
+        // Vamos usar filter se disponível (mais moderno) ou ignorar se complexo demais.
+        if (tintColor && ctx.filter) {
+            // Ex: tintColor = 'red' -> filter: sepia(1) hue-rotate(...) ? Não é exato.
+            // Melhor: Red Overlay usando source-atop
         }
 
         // 4. Desenhar centralizado (offset relativo)

@@ -114,34 +114,58 @@ export default class KillZoneComponent {
             };
 
             // Tentar encontrar um Script de Morte customizado
-            // Procura em todos os componentes por um método 'onDeath' na instância
+            // PRIORIDADE 1: Scripts de TELA DE MORTE (aoMorrer)
+            let deathScreenScript = null;
+            if (player.componentes) {
+                console.log('[KillZone] Procurando script de TELA DE MORTE...');
+                for (const comp of player.componentes.values()) {
+                    if (comp.tipo === 'ScriptComponent' && comp.instance) {
+                        const nome = comp.instance.constructor.name || '';
+                        // Procura scripts com "Death" ou "Morte" no nome
+                        if (nome.toLowerCase().includes('death') || nome.toLowerCase().includes('morte')) {
+                            if (typeof comp.instance.aoMorrer === 'function') {
+                                console.log('[KillZone] ✅ Script de tela de morte encontrado:', nome);
+                                deathScreenScript = comp.instance;
+                                break;
+                            }
+                            if (typeof comp.instance.onDeath === 'function') {
+                                console.log('[KillZone] ✅ Script de tela de morte (onDeath) encontrado:', nome);
+                                deathScreenScript = comp.instance;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Se encontrou script de tela de morte, usa ele
+            if (deathScreenScript) {
+                console.log('[KillZone] Chamando script de tela de morte...');
+                if (typeof deathScreenScript.aoMorrer === 'function') {
+                    deathScreenScript.aoMorrer();
+                } else if (typeof deathScreenScript.onDeath === 'function') {
+                    deathScreenScript.onDeath(this, doRespawn);
+                }
+                return; // Para aqui, o script de morte cuida do resto
+            }
+
+            // PRIORIDADE 2: Método player.morrer() (RespawnScript)
+            if (typeof player.morrer === 'function') {
+                console.log('[KillZone] Método player.morrer() encontrado. Delegando...');
+                player.morrer();
+                return; // NÃO faz ressurgimento manual. O script de morte cuida disso.
+            }
+
+            // PRIORIDADE 3: Procura outros scripts com onDeath
             let customScript = null;
             if (player.componentes) {
-                console.log('[KillZone] Procurando script de morte no player...', player.componentes);
+                console.log('[KillZone] Procurando outros scripts de morte...');
                 for (const comp of player.componentes.values()) {
-                    console.log(`[KillZone] Checking comp: ${comp.tipo}`, comp);
-                    if (comp.tipo === 'ScriptComponent') {
-                        console.log('   -> Instance:', comp.instance);
-                        if (comp.instance) {
-                            console.log('   -> onDeath type:', typeof comp.instance.onDeath);
-                            if (typeof comp.instance.onDeath === 'function') {
-                                console.log('[KillZone] Script ENCONTRADO:', comp.nome);
-                                customScript = comp.instance;
-                                break;
-                            } else {
-                                console.log('[KillZone] Script encontrado mas SEM onDeath:', comp.nome);
-                            }
-                        } else {
-                            console.log('[KillZone] Script encontrado mas SEM INSTÂNCIA (Erro de compilação ou inicialização):', comp.nome);
-                            // Tentativa de recompilação de emergência
-                            if (comp.source) {
-                                console.log('   -> Tentando recompilar de emergência...');
-                                comp.inicializar(player);
-                                if (comp.instance && typeof comp.instance.onDeath === 'function') {
-                                    customScript = comp.instance;
-                                    break;
-                                }
-                            }
+                    if (comp.tipo === 'ScriptComponent' && comp.instance) {
+                        if (typeof comp.instance.onDeath === 'function') {
+                            console.log('[KillZone] Script com onDeath() ENCONTRADO:', comp.nome);
+                            customScript = comp.instance;
+                            break;
                         }
                     }
                 }

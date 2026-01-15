@@ -151,7 +151,8 @@ export default class UIComponent {
                 } else if (el.tipo === 'icones') {
                     this.desenharIcones(ctx, el, x, y, valorAtual, valorMax);
                 } else if (el.tipo === 'imagem') {
-                    this.desenharImagem(ctx, renderizador, el, x, y);
+                    // Imagens não precisam de binding de valores
+                    this.desenharImagem(ctx, renderizador, el, x, y, porcentagem);
                 } else if (el.tipo === 'texto') {
                     this.desenharTexto(ctx, el, x, y, valorAtual, valorMax);
                 } else if (el.tipo === 'inventario') {
@@ -176,35 +177,122 @@ export default class UIComponent {
     }
 
     desenharBarra(ctx, el, x, y, pct, val, max) {
-        // Fundo
+        // Fallback para raio
+        const raio = el.borderRadius || 0;
+        const borderW = el.borderWidth || 0;
+        const borderC = el.borderColor || '#000';
+
+        // 1. Caminho de Recorte (Clip Path) para o Fundo + Borda
+        ctx.beginPath();
+        if (ctx.roundRect) {
+            ctx.roundRect(x, y, el.largura, el.altura, raio);
+        } else {
+            ctx.rect(x, y, el.largura, el.altura);
+        }
+
+        // 2. Fundo
         ctx.fillStyle = el.corFundo || '#000';
-        ctx.fillRect(x, y, el.largura, el.altura);
+        ctx.fill();
 
-        // Preenchimento
+        // 3. Preenchimento (com Clip para respeitar o raio)
+        ctx.save();
+        ctx.clip(); // Restringe desenho à área da barra (arredondada)
+
         ctx.fillStyle = el.corPreenchimento || '#f00';
-        ctx.fillRect(x + 1, y + 1, (el.largura - 2) * pct, el.altura - 2);
+        // Desenha o retangulo de progresso (sem arredondamento extra pois o clip já faz isso)
+        ctx.fillRect(x, y, el.largura * pct, el.altura);
 
-        // Borda (opcional) // TODO: Adicionar config de borda
+        ctx.restore();
+
+        // 4. Borda (Stroke) por cima de tudo
+        if (borderW > 0) {
+            ctx.lineWidth = borderW;
+            ctx.strokeStyle = borderC;
+            ctx.stroke();
+        }
     }
 
-    desenharImagem(ctx, renderizador, el, x, y) {
+    desenharImagem(ctx, renderizador, el, x, y, porcentagem) {
         if (!el.assetId) return;
 
         // Tenta obter o asset do gerenciador
         // renderizador -> engine -> assetManager
         const assetManager = (renderizador.engine && renderizador.engine.assetManager) ? renderizador.engine.assetManager : renderizador.assetManager;
         if (assetManager) {
-            const img = assetManager.obterImagem(el.assetId);
-            if (img) {
-                ctx.drawImage(img, x, y, el.largura || img.width, el.altura || img.height);
+            const asset = assetManager.obterAsset(el.assetId);
+            if (asset && asset.imagem) {
+                const img = asset.imagem;
+                const scale = el.scale || 1.0;
+                const largura = (el.largura || img.width) * scale;
+                const altura = (el.altura || img.height) * scale;
+
+                // Se tiver binding de valores (alvo/alvoMax), usa como barra de progresso
+                if (el.alvo && el.alvoMax && porcentagem !== undefined) {
+                    // Desenha apenas a porcentagem da imagem (clip horizontal)
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.rect(x, y, largura * porcentagem, altura);
+                    ctx.clip();
+                    ctx.drawImage(img, x, y, largura, altura);
+                    ctx.restore();
+                } else {
+                    // Desenha a imagem completa
+                    ctx.drawImage(img, x, y, largura, altura);
+                }
             }
         }
     }
 
     desenharTexto(ctx, el, x, y, val, max) {
         ctx.font = `${el.tamanhoFonte || 12}px ${el.familiaFonte || 'monospace'}`;
-        ctx.fillStyle = el.corTexto || '#fff';
         ctx.textAlign = el.alinhamento || 'left';
+
+        // Sombra
+        if (el.shadowBlur > 0) {
+            ctx.shadowColor = el.shadowColor || '#000';
+            ctx.shadowBlur = el.shadowBlur;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+        }
+
+        const textoFinal = this._processarTexto(el, val, max); // Helper extraction if needed, or inline logic
+
+        // Borda (Stroke) antes do Fill
+        if (el.strokeWidth > 0) {
+            ctx.lineWidth = el.strokeWidth;
+            ctx.strokeStyle = el.strokeColor || '#000';
+            ctx.strokeText(textoFinal, x, y);
+        }
+
+        // Fill
+        ctx.fillStyle = el.corTexto || '#fff';
+        ctx.fillText(textoFinal, x, y);
+
+        // Reset Sombra
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+    }
+
+    _processarTexto(el, val, max) {
+        // Lógica original de texto sem o desenho
+        let texto = el.textoFixo || '';
+        if (val !== undefined) {
+            // Formatação com Zero Pad (Ex: {val:00} -> 01, 05, 10)
+            if (texto.includes('{val:00}')) {
+                texto = texto.replace('{val:00}', String(Math.floor(val)).padStart(2, '0'));
+            }
+
+            texto = texto.replace('{val}', Math.floor(val));
+            texto = texto.replace('{max}', Math.floor(max || 0));
+            texto = texto.replace('{pct}', Math.floor((val / (max || 1)) * 100) + '%');
+        }
+        return texto;
+    }
+
+    // Antigo desenharTexto para referência de substituição completa (vou reescrever o método inteiro para ser mais limpo)
+    desenharTexto_OLD(ctx, el, x, y, val, max) {
 
         let texto = el.textoFixo || '';
 
@@ -235,13 +323,8 @@ export default class UIComponent {
 
     _getImgHelper(assetManager, id) {
         if (!assetManager || !id) return null;
-        if (typeof assetManager.obterImagem === 'function') {
-            return assetManager.obterImagem(id);
-        } else if (typeof assetManager.obterAsset === 'function') {
-            const asset = assetManager.obterAsset(id);
-            return asset ? asset.imagem : null;
-        }
-        return null;
+        const asset = assetManager.obterAsset(id);
+        return asset ? asset.imagem : null;
     }
 
     desenharInventario(ctx, renderizador, el, x, y) {
